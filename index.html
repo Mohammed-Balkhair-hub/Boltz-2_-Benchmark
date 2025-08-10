@@ -2,97 +2,162 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>EGFR Structures (interactive)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EGFR Structures (cartoon + ligand)</title>
   <script src="https://3dmol.org/build/3Dmol-min.js"></script>
   <style>
-    :root{ --accent:#f28c28; --bg:#f6f7fb; --panel:#fff; --border:#e6e8ef; }
-    html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-    header{background:var(--accent);color:#fff;padding:12px 16px;font-weight:700}
-    .grid{display:grid;gap:14px;padding:14px;grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
-    .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden;display:flex;flex-direction:column;min-height:420px}
-    .card h3{margin:0;padding:10px 14px;font-size:15px;border-bottom:1px solid var(--border)}
-    .view{flex:1;min-height:360px}
-    .hint{padding:0 14px 10px;color:#6b7280;font-size:12px}
-    .err{padding:12px;color:#b00020}
+    :root { --card-h: 420px; --gap: 14px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f4f6f8; color:#222; }
+    header { background:#f18700; color:#fff; padding:10px 16px; font-weight:700; }
+    .grid {
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+      padding: var(--gap);
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      background:#fff;
+      border-radius:12px;
+      box-shadow: 0 3px 14px rgba(0,0,0,.08);
+      border:1px solid #e6e9ee;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height: calc(var(--card-h) + 44px);
+    }
+    .card h3 {
+      margin:0; padding:10px 12px; font-size:14px; font-weight:700; color:#111;
+      border-bottom:1px solid #eef1f5; background:#fafbfc;
+    }
+    .viewer-wrap {
+      position:relative;
+      height: var(--card-h);
+      width: 100%;
+      overflow:hidden;   /* keeps canvas inside the card */
+      background: #fff;
+    }
+    .viewer {
+      position:absolute; inset:0;   /* makes canvas fill the card */
+      width:100%; height:100%;
+    }
+    .foot {
+      padding:8px 12px; font-size:12px; color:#6b7280; border-top:1px solid #eef1f5;
+    }
+    .error {
+      position:absolute; inset:auto 12px 12px 12px;
+      background:#fff2f2; color:#b00020; border:1px solid #f3c2c2;
+      padding:8px 10px; border-radius:8px; font-size:12px; line-height:1.3;
+    }
+    @media (max-width: 900px){
+      .grid { grid-template-columns: 1fr; }
+      :root { --card-h: 380px; }
+    }
   </style>
 </head>
 <body>
   <header>EGFR Structures (interactive) — drag to rotate, scroll to zoom</header>
 
   <div class="grid">
-    <div class="card"><h3>EGFR + Erlotinib (T790W)</h3><div id="v1" class="view"></div><div class="hint">Cartoon protein + ligand sticks</div></div>
-    <div class="card"><h3>EGFR + Erlotinib (WT)</h3>   <div id="v2" class="view"></div><div class="hint">Cartoon protein + ligand sticks</div></div>
-    <div class="card"><h3>EGFR + Osimertinib (C797F)</h3><div id="v3" class="view"></div><div class="hint">Cartoon protein + ligand sticks</div></div>
-    <div class="card"><h3>EGFR + Osimertinib (WT)</h3> <div id="v4" class="view"></div><div class="hint">Cartoon protein + ligand sticks</div></div>
+    <div class="card">
+      <h3>EGFR + Erlotinib (T790W)</h3>
+      <div class="viewer-wrap"><div id="v1" class="viewer"></div></div>
+      <div class="foot">Cartoon protein + ligand sticks</div>
+    </div>
+    <div class="card">
+      <h3>EGFR + Erlotinib (WT)</h3>
+      <div class="viewer-wrap"><div id="v2" class="viewer"></div></div>
+      <div class="foot">Cartoon protein + ligand sticks</div>
+    </div>
+    <div class="card">
+      <h3>EGFR + Osimertinib (C797F)</h3>
+      <div class="viewer-wrap"><div id="v3" class="viewer"></div></div>
+      <div class="foot">Cartoon protein + ligand sticks</div>
+    </div>
+    <div class="card">
+      <h3>EGFR + Osimertinib (WT)</h3>
+      <div class="viewer-wrap"><div id="v4" class="viewer"></div></div>
+      <div class="foot">Cartoon protein + ligand sticks</div>
+    </div>
   </div>
 
   <script>
-  const RAW_BASE =
-    "https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/";
+    // Same-origin base (your GitHub Pages site). No trailing slash needed if this file
+    // sits in the same folder as the PDB files.
+    const LOCAL_BASE = ''; // e.g. '' or 'structures/' if you put PDBs in /structures
 
-  async function tryFetch(url) {
-    const r = await fetch(url, { cache: "no-store" });
-    if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${url}`);
-    return r.text();
-  }
+    // Raw fallback (different origin) if a file isn’t on Pages yet
+    const RAW_BASE = "https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/";
 
-  async function fetchPDB(basename) {
-    // 1) same-origin (GitHub Pages) — best for CORS
-    const local = basename;
-    // 2) raw fallback (different origin)
-    const raw = RAW_BASE + basename;
+    const FILES = [
+      { div: 'v1', name: 'EGFR_erlotinib_T790W_trimmed.pdb' },
+      { div: 'v2', name: 'EGFR_erlotinib_trimmed.pdb' },
+      { div: 'v3', name: 'EGFR_osimertinib_C797F_trimmed.pdb' },
+      { div: 'v4', name: 'EGFR_osimertinib_trimmed.pdb' }
+    ];
 
-    try { return await tryFetch(local); }
-    catch (e1) {
-      console.warn("Local fetch failed, trying RAW:", e1);
-      try { return await tryFetch(raw); }
-      catch (e2) { throw e2; }
+    function showError(divId, msg) {
+      const wrap = document.getElementById(divId).parentElement;
+      const box = document.createElement('div');
+      box.className = 'error';
+      box.innerHTML = `⚠️ ${msg}`;
+      wrap.appendChild(box);
     }
-  }
 
-  async function loadPanel(divId, pdbName) {
-    const el = document.getElementById(divId);
-    const viewer = $3Dmol.createViewer(el, { backgroundAlpha: 1.0 });
+    async function fetchPDB(url) {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`);
+      return await r.text();
+    }
 
-    try {
-      const pdb = await fetchPDB(pdbName);
+    async function loadViewer(divId, pdbName) {
+      const el = document.getElementById(divId);
+      const viewer = $3Dmol.createViewer(el, { backgroundAlpha: 1.0 });
 
-      viewer.addModel(pdb, "pdb");
-      viewer.setStyle({}, {}); // clear defaults
-
-      // Protein cartoon (fallback to tube if no SS info)
-      viewer.setStyle({ hetflag: false }, { cartoon: { color: "spectrum" } });
-      const prot = viewer.getModel().selectedAtoms({ hetflag: false });
-      if (!prot || prot.length === 0) {
-        viewer.setStyle({ atom: "CA" }, { tube: { radius: 0.35, color: "spectrum" } });
+      // try same-origin first
+      let pdbText = null;
+      try { pdbText = await fetchPDB(`${LOCAL_BASE}${pdbName}`); }
+      catch (e1) {
+        console.warn('Local fetch failed:', e1.message);
+        try { pdbText = await fetchPDB(`${RAW_BASE}${pdbName}`); }
+        catch (e2) {
+          console.error('Raw fetch failed:', e2.message);
+          showError(divId, `Couldn’t load <b>${pdbName}</b><br><code>${e2.message}</code>`);
+          return;
+        }
       }
 
-      // Ligand sticks (het)
-      viewer.setStyle({ hetflag: true }, { stick: { radius: 0.22 } });
+      try {
+        viewer.addModel(pdbText, 'pdb');
 
-      // Zoom (prefer ligand)
-      const lig = viewer.getModel().selectedAtoms({ hetflag: true });
-      if (lig && lig.length) viewer.zoomTo({ hetflag: true }); else viewer.zoomTo();
+        // cartoon for protein (fallback to tube if no SS in PDB)
+        viewer.setStyle({ hetflag: false }, { cartoon: { color: 'spectrum' } });
+        const protAtoms = viewer.getModel().selectedAtoms({ hetflag: false });
+        if (!protAtoms || protAtoms.length === 0) {
+          viewer.setStyle({ atom: 'CA' }, { tube: { radius: 0.35, color: 'spectrum' } });
+        }
 
-      viewer.render();
-      const onResize = () => viewer.resize();
-      window.addEventListener("resize", onResize, { passive: true });
-    } catch (err) {
-      console.error("Load error:", pdbName, err);
-      el.innerHTML = `<div style="padding:12px;color:#b00020;font:14px/1.4 system-ui">
-        ⚠️ Couldn’t load <b>${pdbName}</b>.<br>
-        <code>${String(err.message)}</code><br>
-        Check that the file exists on your GitHub Pages branch and the name (including UPPER/lower case) matches exactly.
-      </div>`;
+        // sticks for ligand / hetero atoms
+        viewer.setStyle({ hetflag: true }, { stick: { radius: 0.22 } });
+
+        // nice view: prefer ligand if present
+        const lig = viewer.getModel().selectedAtoms({ hetflag: true });
+        if (lig && lig.length) viewer.zoomTo({ hetflag: true }); else viewer.zoomTo();
+
+        viewer.render();
+        // keep canvas sized to its card
+        const onResize = () => viewer.resize();
+        window.addEventListener('resize', onResize, { passive: true });
+      } catch (e) {
+        console.error('Viewer error:', e);
+        showError(divId, `Rendering error for <b>${pdbName}</b><br><code>${e.message}</code>`);
+      }
     }
-  }
 
-  // Filenames must match exactly
-  loadPanel('v1', 'EGFR_erlotinib_T790W_trimmed.pdb');
-  loadPanel('v2', 'EGFR_erlotinib_trimmed.pdb');
-  loadPanel('v3', 'EGFR_osimertinib_C797F_trimmed.pdb');
-  loadPanel('v4', 'EGFR_osimertinib_trimmed.pdb');
-</script>
+    // Load all four panels
+    FILES.forEach(x => loadViewer(x.div, x.name));
+  </script>
 </body>
 </html>
