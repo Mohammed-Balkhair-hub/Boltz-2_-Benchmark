@@ -2,17 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>EGFR Structures — Mol* iframes</title>
+  <title>EGFR Structures (interactive)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- 3Dmol.js -->
+  <script src="https://3dmol.org/build/3Dmol-min.js"></script>
   <style>
-    :root { --accent:#f28c28; --bg:#f6f7fb; --card:#fff; --line:#e7e9ef; }
-    html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-    header{background:var(--accent);color:#fff;padding:10px 16px;font-weight:700}
-    .grid{display:grid;gap:16px;padding:16px;grid-template-columns:repeat(2,minmax(0,1fr))}
-    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .card h3{margin:0;padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px}
-    iframe{display:block;width:100%;height:430px;border:0}
-    @media (max-width:900px){.grid{grid-template-columns:1fr} iframe{height:360px}}
+    :root{
+      --accent:#f28c28; /* orange header */
+      --panel:#ffffff;
+      --bg:#f6f7fb;
+      --border:#e5e7ef;
+    }
+    html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    header{background:var(--accent);color:#fff;padding:12px 16px;font-weight:700}
+    .grid{
+      display:grid;gap:14px;padding:14px;
+      grid-template-columns: repeat(auto-fit,minmax(420px,1fr));
+    }
+    .card{
+      background:var(--panel);border:1px solid var(--border);
+      border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden;
+      display:flex;flex-direction:column;min-height:420px;
+    }
+    .card h3{margin:0;padding:10px 14px;font-size:15px;border-bottom:1px solid var(--border)}
+    .view{flex:1;min-height:360px}
+    .hint{padding:0 16px 10px;color:#6a6f7a;font-size:12px}
   </style>
 </head>
 <body>
@@ -21,31 +35,74 @@
   <div class="grid">
     <div class="card">
       <h3>EGFR + Erlotinib (T790W)</h3>
-      <iframe
-        src="https://molstar.org/viewer/?hide-controls=1&noexpand=1&url=https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/EGFR_erlotinib_T790W_trimmed.pdb">
-      </iframe>
+      <div id="v1" class="view"></div>
+      <div class="hint">Cartoon protein + ligand sticks</div>
     </div>
-
     <div class="card">
       <h3>EGFR + Erlotinib (WT)</h3>
-      <iframe
-        src="https://molstar.org/viewer/?hide-controls=1&noexpand=1&url=https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/EGFR_erlotinib_trimmed.pdb">
-      </iframe>
+      <div id="v2" class="view"></div>
+      <div class="hint">Cartoon protein + ligand sticks</div>
     </div>
-
     <div class="card">
       <h3>EGFR + Osimertinib (C797F)</h3>
-      <iframe
-        src="https://molstar.org/viewer/?hide-controls=1&noexpand=1&url=https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/EGFR_osimertinib_C797F_trimmed.pdb">
-      </iframe>
+      <div id="v3" class="view"></div>
+      <div class="hint">Cartoon protein + ligand sticks</div>
     </div>
-
     <div class="card">
       <h3>EGFR + Osimertinib (WT)</h3>
-      <iframe
-        src="https://molstar.org/viewer/?hide-controls=1&noexpand=1&url=https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/EGFR_osimertinib_trimmed.pdb">
-      </iframe>
+      <div id="v4" class="view"></div>
+      <div class="hint">Cartoon protein + ligand sticks</div>
     </div>
   </div>
+
+  <script>
+    /**
+     * Load a PDB into a 3Dmol viewer with cartoon protein and ligand sticks.
+     * Files are fetched from SAME origin (your GitHub Pages site), so no CORS issues.
+     */
+    async function loadPanel(divId, pdbPath){
+      const elt = document.getElementById(divId);
+      const config = { backgroundAlpha: 1.0 };
+      const viewer = $3Dmol.createViewer(elt, config);
+
+      // Fetch the file relative to this index.html
+      const resp = await fetch(pdbPath);
+      if(!resp.ok){
+        console.error('Failed to fetch', pdbPath);
+        elt.innerHTML = `<div style="padding:12px;color:#b00">Failed to load ${pdbPath}</div>`;
+        return;
+      }
+      const pdbText = await resp.text();
+
+      viewer.addModel(pdbText, "pdb"); // adds as a single model
+      // Protein cartoon
+      viewer.setStyle({chain:'*', hetflag:false}, {cartoon:{color:'spectrum'}});
+      // Ligand sticks (all HETATM)
+      viewer.setStyle({hetflag:true}, {stick:{radius:0.2}});
+      // Emphasize sulfur/halogens if present
+      viewer.setStyle({elem:'S', hetflag:true}, {stick:{radius:0.28}});
+      viewer.setStyle({elem:'F', hetflag:true}, {stick:{radius:0.28}});
+      viewer.setStyle({elem:'Cl', hetflag:true}, {stick:{radius:0.28}});
+      viewer.setStyle({elem:'Br', hetflag:true}, {stick:{radius:0.3}});
+      viewer.setStyle({elem:'I', hetflag:true}, {stick:{radius:0.32}});
+
+      viewer.zoomTo();  // fit everything
+      // Then zoom near the ligand if present
+      const selLig = viewer.getModel().selectedAtoms({hetflag:true});
+      if(selLig && selLig.length){
+        viewer.zoomTo({hetflag:true});
+      }
+      viewer.render();
+      // Keep resize responsive
+      window.addEventListener('resize', () => viewer.resize());
+    }
+
+    // IMPORTANT: the paths below assume the PDB files sit right next to index.html.
+    // If you move them into a folder (e.g. /assets/), update the paths accordingly.
+    loadPanel('v1', 'EGFR_erlotinib_T790W_trimmed.pdb');
+    loadPanel('v2', 'EGFR_erlotinib_trimmed.pdb');
+    loadPanel('v3', 'EGFR_osimertinib_C797F_trimmed.pdb');
+    loadPanel('v4', 'EGFR_osimertinib_trimmed.pdb');
+  </script>
 </body>
 </html>
