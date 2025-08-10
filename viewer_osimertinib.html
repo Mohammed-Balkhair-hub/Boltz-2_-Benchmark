@@ -2,27 +2,57 @@
 <html>
 <head>
   <meta charset="utf-8" />
+  <title>Mol* viewer</title>
   <script src="https://unpkg.com/molstar/build/viewer/molstar.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/molstar/build/viewer/molstar.css" />
   <style>
-    body, html { margin: 0; width: 100%; height: 100%; }
-    #app { width: 100%; height: 100%; }
+    html, body { margin:0; height:100%; }
+    #app { width:100%; height:100vh; }
   </style>
 </head>
 <body>
   <div id="app"></div>
   <script>
-    new molstar.Viewer('app', {
+    const viewer = new molstar.Viewer('app', {
       layoutIsExpanded: true,
       layoutShowControls: false,
       layoutShowSequence: false,
-      layoutShowLeftPanel: false
-    }).then(viewer => {
-      viewer.loadStructureFromUrl(
-        'https://gist.githubusercontent.com/Mohammed-Balkhair-hub/279dd504163a242ee6491e904adc6dbf/raw/EGFR_osimertinib_trimmed.pdb',
-        'pdb'
-      );
+      layoutShowLeftPanel: false,
+      viewportShowExpand: false
     });
+
+    // CHANGE THIS URL per page
+    const url = 'EGFR_osimertinib_trimmed.pdb'; // or use your raw.githubusercontent URL
+
+    viewer.loadStructureFromUrl(url, 'pdb').then(({ structure }) => {
+      // Remove default reps
+      viewer.clear();
+
+      // Protein as cartoon
+      viewer.addRepresentation(structure, {
+        type: 'cartoon',
+        color: 'chain-id',     // nice contrast
+        quality: 'auto',
+        sele: 'polymer'
+      });
+
+      // Ligands as ball-and-stick
+      viewer.addRepresentation(structure, {
+        type: 'ball-and-stick',
+        sele: 'ligand',
+        multipleBonds: 'symmetric',
+        quality: 'auto'
+      });
+
+      // Optional: thin lines for water/ions (or omit)
+      viewer.addRepresentation(structure, {
+        type: 'line',
+        sele: 'water or ion',
+        color: 'element-symbol'
+      });
+
+      viewer.autoView();
+    }).catch(e => console.error(e));
   </script>
 </body>
 </html>
