@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <title>EGFR Structures Viewer</title>
-  <script src="https://cdn.rcsb.org/rcsb-pdb/molstar-3.27.0/molstar.js"></script>
-  <link rel="stylesheet" href="https://cdn.rcsb.org/rcsb-pdb/molstar-3.27.0/molstar.css" />
+  <script src="https://unpkg.com/molstar/build/viewer/molstar.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/molstar/build/viewer/molstar.css" />
   <style>
     body {
       margin: 0;
@@ -63,14 +63,13 @@
 
   <script>
     function loadMolstar(viewerId, pdbUrl) {
-      molstar.Viewer.create(viewerId, {
-        layoutIsExpanded: true,
+      const viewer = new molstar.Viewer(viewerId, {
+        layoutIsExpanded: false,
         layoutShowControls: false,
         layoutShowSequence: false,
         layoutShowLeftPanel: false
-      }).then(viewer => {
-        viewer.loadStructureFromUrl(pdbUrl, 'pdb');
       });
+      viewer.loadStructureFromUrl(pdbUrl, 'pdb');
     }
 
     loadMolstar('viewer1', 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/main/EGFR_erlotinib_T790W_trimmed.pdb');
