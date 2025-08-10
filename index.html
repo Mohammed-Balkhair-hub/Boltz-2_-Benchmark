@@ -4,101 +4,74 @@
   <meta charset="utf-8" />
   <title>EGFR Structures (interactive)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- 3Dmol.js -->
   <script src="https://3dmol.org/build/3Dmol-min.js"></script>
   <style>
-    :root{
-      --accent:#f28c28; /* orange header */
-      --panel:#ffffff;
-      --bg:#f6f7fb;
-      --border:#e5e7ef;
-    }
-    html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+    :root{ --accent:#f28c28; --bg:#f6f7fb; --panel:#fff; --border:#e6e8ef; }
+    html,body{height:100%;margin:0;background:var(--bg);font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
     header{background:var(--accent);color:#fff;padding:12px 16px;font-weight:700}
-    .grid{
-      display:grid;gap:14px;padding:14px;
-      grid-template-columns: repeat(auto-fit,minmax(420px,1fr));
-    }
-    .card{
-      background:var(--panel);border:1px solid var(--border);
-      border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);overflow:hidden;
-      display:flex;flex-direction:column;min-height:420px;
-    }
+    .grid{display:grid;gap:14px;padding:14px;grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden;display:flex;flex-direction:column;min-height:420px}
     .card h3{margin:0;padding:10px 14px;font-size:15px;border-bottom:1px solid var(--border)}
     .view{flex:1;min-height:360px}
-    .hint{padding:0 16px 10px;color:#6a6f7a;font-size:12px}
+    .hint{padding:0 14px 10px;color:#6b7280;font-size:12px}
+    .err{padding:12px;color:#b00020}
   </style>
 </head>
 <body>
   <header>EGFR Structures (interactive) — drag to rotate, scroll to zoom</header>
 
   <div class="grid">
-    <div class="card">
-      <h3>EGFR + Erlotinib (T790W)</h3>
-      <div id="v1" class="view"></div>
-      <div class="hint">Cartoon protein + ligand sticks</div>
-    </div>
-    <div class="card">
-      <h3>EGFR + Erlotinib (WT)</h3>
-      <div id="v2" class="view"></div>
-      <div class="hint">Cartoon protein + ligand sticks</div>
-    </div>
-    <div class="card">
-      <h3>EGFR + Osimertinib (C797F)</h3>
-      <div id="v3" class="view"></div>
-      <div class="hint">Cartoon protein + ligand sticks</div>
-    </div>
-    <div class="card">
-      <h3>EGFR + Osimertinib (WT)</h3>
-      <div id="v4" class="view"></div>
-      <div class="hint">Cartoon protein + ligand sticks</div>
-    </div>
+    <div class="card"><h3>EGFR + Erlotinib (T790W)</h3><div id="v1" class="view"></div><div class="hint">Cartoon protein + ligand sticks</div></div>
+    <div class="card"><h3>EGFR + Erlotinib (WT)</h3>   <div id="v2" class="view"></div><div class="hint">Cartoon protein + ligand sticks</div></div>
+    <div class="card"><h3>EGFR + Osimertinib (C797F)</h3><div id="v3" class="view"></div><div class="hint">Cartoon protein + ligand sticks</div></div>
+    <div class="card"><h3>EGFR + Osimertinib (WT)</h3> <div id="v4" class="view"></div><div class="hint">Cartoon protein + ligand sticks</div></div>
   </div>
 
   <script>
-    /**
-     * Load a PDB into a 3Dmol viewer with cartoon protein and ligand sticks.
-     * Files are fetched from SAME origin (your GitHub Pages site), so no CORS issues.
-     */
-    async function loadPanel(divId, pdbPath){
-      const elt = document.getElementById(divId);
-      const config = { backgroundAlpha: 1.0 };
-      const viewer = $3Dmol.createViewer(elt, config);
+    async function loadPanel(divId, pdbFile){
+      const el = document.getElementById(divId);
+      const viewer = $3Dmol.createViewer(el, {backgroundAlpha:1.0});
 
-      // Fetch the file relative to this index.html
-      const resp = await fetch(pdbPath);
-      if(!resp.ok){
-        console.error('Failed to fetch', pdbPath);
-        elt.innerHTML = `<div style="padding:12px;color:#b00">Failed to load ${pdbPath}</div>`;
-        return;
+      try{
+        const resp = await fetch(pdbFile, {cache:'no-store'});
+        if(!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+        const pdb = await resp.text();
+
+        // load & clear any default line style
+        viewer.addModel(pdb, "pdb");
+        viewer.setStyle({}, {}); // reset styles
+
+        // protein cartoon
+        viewer.setStyle({hetflag:false}, {cartoon:{color:'spectrum'}});
+
+        // Fallback if cartoon didn’t get assigned (no SS in PDB)
+        const protAtoms = viewer.getModel().selectedAtoms({hetflag:false});
+        if(!protAtoms || protAtoms.length === 0){
+          viewer.setStyle({atom:'CA'}, {tube:{radius:0.35, color:'spectrum'}});
+        }
+
+        // ligand sticks
+        viewer.setStyle({hetflag:true}, {stick:{radius:0.22}});
+        viewer.setStyle({elem:'S',hetflag:true},  {stick:{radius:0.28}});
+        viewer.setStyle({elem:'F',hetflag:true},  {stick:{radius:0.28}});
+        viewer.setStyle({elem:'Cl',hetflag:true}, {stick:{radius:0.28}});
+        viewer.setStyle({elem:'Br',hetflag:true}, {stick:{radius:0.30}});
+        viewer.setStyle({elem:'I',hetflag:true},  {stick:{radius:0.32}});
+
+        // Fit view (prefer ligand if present)
+        const lig = viewer.getModel().selectedAtoms({hetflag:true});
+        if(lig && lig.length) viewer.zoomTo({hetflag:true}); else viewer.zoomTo();
+
+        viewer.render();
+        const onResize = () => viewer.resize();
+        window.addEventListener('resize', onResize, {passive:true});
+      }catch(err){
+        console.error('Load error for', pdbFile, err);
+        el.innerHTML = `<div class="err">Failed to load <b>${pdbFile}</b>. Check the filename and that it’s published on the Pages branch.</div>`;
       }
-      const pdbText = await resp.text();
-
-      viewer.addModel(pdbText, "pdb"); // adds as a single model
-      // Protein cartoon
-      viewer.setStyle({chain:'*', hetflag:false}, {cartoon:{color:'spectrum'}});
-      // Ligand sticks (all HETATM)
-      viewer.setStyle({hetflag:true}, {stick:{radius:0.2}});
-      // Emphasize sulfur/halogens if present
-      viewer.setStyle({elem:'S', hetflag:true}, {stick:{radius:0.28}});
-      viewer.setStyle({elem:'F', hetflag:true}, {stick:{radius:0.28}});
-      viewer.setStyle({elem:'Cl', hetflag:true}, {stick:{radius:0.28}});
-      viewer.setStyle({elem:'Br', hetflag:true}, {stick:{radius:0.3}});
-      viewer.setStyle({elem:'I', hetflag:true}, {stick:{radius:0.32}});
-
-      viewer.zoomTo();  // fit everything
-      // Then zoom near the ligand if present
-      const selLig = viewer.getModel().selectedAtoms({hetflag:true});
-      if(selLig && selLig.length){
-        viewer.zoomTo({hetflag:true});
-      }
-      viewer.render();
-      // Keep resize responsive
-      window.addEventListener('resize', () => viewer.resize());
     }
 
-    // IMPORTANT: the paths below assume the PDB files sit right next to index.html.
-    // If you move them into a folder (e.g. /assets/), update the paths accordingly.
+    // IMPORTANT: these names must match EXACTLY (case-sensitive) and be in the same folder as this HTML.
     loadPanel('v1', 'EGFR_erlotinib_T790W_trimmed.pdb');
     loadPanel('v2', 'EGFR_erlotinib_trimmed.pdb');
     loadPanel('v3', 'EGFR_osimertinib_C797F_trimmed.pdb');
