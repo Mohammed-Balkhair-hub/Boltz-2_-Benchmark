@@ -28,54 +28,71 @@
   </div>
 
   <script>
-    async function loadPanel(divId, pdbFile){
-      const el = document.getElementById(divId);
-      const viewer = $3Dmol.createViewer(el, {backgroundAlpha:1.0});
+  const RAW_BASE =
+    "https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/";
 
-      try{
-        const resp = await fetch(pdbFile, {cache:'no-store'});
-        if(!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
-        const pdb = await resp.text();
+  async function tryFetch(url) {
+    const r = await fetch(url, { cache: "no-store" });
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${url}`);
+    return r.text();
+  }
 
-        // load & clear any default line style
-        viewer.addModel(pdb, "pdb");
-        viewer.setStyle({}, {}); // reset styles
+  async function fetchPDB(basename) {
+    // 1) same-origin (GitHub Pages) — best for CORS
+    const local = basename;
+    // 2) raw fallback (different origin)
+    const raw = RAW_BASE + basename;
 
-        // protein cartoon
-        viewer.setStyle({hetflag:false}, {cartoon:{color:'spectrum'}});
-
-        // Fallback if cartoon didn’t get assigned (no SS in PDB)
-        const protAtoms = viewer.getModel().selectedAtoms({hetflag:false});
-        if(!protAtoms || protAtoms.length === 0){
-          viewer.setStyle({atom:'CA'}, {tube:{radius:0.35, color:'spectrum'}});
-        }
-
-        // ligand sticks
-        viewer.setStyle({hetflag:true}, {stick:{radius:0.22}});
-        viewer.setStyle({elem:'S',hetflag:true},  {stick:{radius:0.28}});
-        viewer.setStyle({elem:'F',hetflag:true},  {stick:{radius:0.28}});
-        viewer.setStyle({elem:'Cl',hetflag:true}, {stick:{radius:0.28}});
-        viewer.setStyle({elem:'Br',hetflag:true}, {stick:{radius:0.30}});
-        viewer.setStyle({elem:'I',hetflag:true},  {stick:{radius:0.32}});
-
-        // Fit view (prefer ligand if present)
-        const lig = viewer.getModel().selectedAtoms({hetflag:true});
-        if(lig && lig.length) viewer.zoomTo({hetflag:true}); else viewer.zoomTo();
-
-        viewer.render();
-        const onResize = () => viewer.resize();
-        window.addEventListener('resize', onResize, {passive:true});
-      }catch(err){
-        console.error('Load error for', pdbFile, err);
-        el.innerHTML = `<div class="err">Failed to load <b>${pdbFile}</b>. Check the filename and that it’s published on the Pages branch.</div>`;
-      }
+    try { return await tryFetch(local); }
+    catch (e1) {
+      console.warn("Local fetch failed, trying RAW:", e1);
+      try { return await tryFetch(raw); }
+      catch (e2) { throw e2; }
     }
+  }
 
-    // IMPORTANT: these names must match EXACTLY (case-sensitive) and be in the same folder as this HTML.
-    loadPanel('v1', 'EGFR_erlotinib_T790W_trimmed.pdb');
-    loadPanel('v2', 'EGFR_erlotinib_trimmed.pdb');
-    loadPanel('v3', 'EGFR_osimertinib_C797F_trimmed.pdb');
-    loadPanel('v4', 'EGFR_osimertinib_trimmed.pdb');
-  </script>
+  async function loadPanel(divId, pdbName) {
+    const el = document.getElementById(divId);
+    const viewer = $3Dmol.createViewer(el, { backgroundAlpha: 1.0 });
+
+    try {
+      const pdb = await fetchPDB(pdbName);
+
+      viewer.addModel(pdb, "pdb");
+      viewer.setStyle({}, {}); // clear defaults
+
+      // Protein cartoon (fallback to tube if no SS info)
+      viewer.setStyle({ hetflag: false }, { cartoon: { color: "spectrum" } });
+      const prot = viewer.getModel().selectedAtoms({ hetflag: false });
+      if (!prot || prot.length === 0) {
+        viewer.setStyle({ atom: "CA" }, { tube: { radius: 0.35, color: "spectrum" } });
+      }
+
+      // Ligand sticks (het)
+      viewer.setStyle({ hetflag: true }, { stick: { radius: 0.22 } });
+
+      // Zoom (prefer ligand)
+      const lig = viewer.getModel().selectedAtoms({ hetflag: true });
+      if (lig && lig.length) viewer.zoomTo({ hetflag: true }); else viewer.zoomTo();
+
+      viewer.render();
+      const onResize = () => viewer.resize();
+      window.addEventListener("resize", onResize, { passive: true });
+    } catch (err) {
+      console.error("Load error:", pdbName, err);
+      el.innerHTML = `<div style="padding:12px;color:#b00020;font:14px/1.4 system-ui">
+        ⚠️ Couldn’t load <b>${pdbName}</b>.<br>
+        <code>${String(err.message)}</code><br>
+        Check that the file exists on your GitHub Pages branch and the name (including UPPER/lower case) matches exactly.
+      </div>`;
+    }
+  }
+
+  // Filenames must match exactly
+  loadPanel('v1', 'EGFR_erlotinib_T790W_trimmed.pdb');
+  loadPanel('v2', 'EGFR_erlotinib_trimmed.pdb');
+  loadPanel('v3', 'EGFR_osimertinib_C797F_trimmed.pdb');
+  loadPanel('v4', 'EGFR_osimertinib_trimmed.pdb');
+</script>
 </body>
 </html>
