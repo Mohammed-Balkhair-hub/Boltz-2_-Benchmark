@@ -1,27 +1,31 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="utf-8">
   <title>EGFR Structure Viewer</title>
   <script src="https://unpkg.com/molstar/build/viewer/molstar.js"></script>
   <style>
-    body { margin: 0; }
-    #app { width: 100vw; height: 100vh; }
+    html, body { margin: 0; height: 100%; }
+    #app { width: 100%; height: 100%; }
   </style>
 </head>
 <body>
   <div id="app"></div>
   <script>
-    molstar.Viewer.create('app', {
+    const viewer = new molstar.Viewer('app', {
       layoutIsExpanded: false,
       layoutShowControls: true,
-      viewportShowExpand: true,
-    }).then(viewer => {
-      viewer.loadStructureFromUrl(
-        'EGFR_osimertinib_trimmed.pdb',
-        'pdb'
-      );
+      layoutShowRemoteState: false,
+      layoutShowSequence: true,
+      layoutShowLog: false,
+      layoutShowLeftPanel: true
     });
+
+    // Load your PDB from GitHub raw link
+    viewer.loadStructureFromUrl(
+      'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/main/EGFR_osimertinib_trimmed.pdb',
+      'pdb'
+    );
   </script>
 </body>
 </html>
