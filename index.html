@@ -32,20 +32,9 @@
       margin:0; padding:10px 12px; font-size:14px; font-weight:700; color:#111;
       border-bottom:1px solid #eef1f5; background:#fafbfc;
     }
-    .viewer-wrap {
-      position:relative;
-      height: var(--card-h);
-      width: 100%;
-      overflow:hidden;   /* keeps canvas inside the card */
-      background: #fff;
-    }
-    .viewer {
-      position:absolute; inset:0;   /* makes canvas fill the card */
-      width:100%; height:100%;
-    }
-    .foot {
-      padding:8px 12px; font-size:12px; color:#6b7280; border-top:1px solid #eef1f5;
-    }
+    .viewer-wrap { position:relative; height: var(--card-h); width: 100%; overflow:hidden; background:#fff; }
+    .viewer { position:absolute; inset:0; width:100%; height:100%; }
+    .foot { padding:8px 12px; font-size:12px; color:#6b7280; border-top:1px solid #eef1f5; }
     .error {
       position:absolute; inset:auto 12px 12px 12px;
       background:#fff2f2; color:#b00020; border:1px solid #f3c2c2;
@@ -64,38 +53,37 @@
     <div class="card">
       <h3>EGFR + Erlotinib (T790W)</h3>
       <div class="viewer-wrap"><div id="v1" class="viewer"></div></div>
-      <div class="foot">Cartoon protein + ligand sticks</div>
+      <div class="foot">Cartoon protein + ligand sticks; highlights residue 790</div>
     </div>
     <div class="card">
       <h3>EGFR + Erlotinib (WT)</h3>
       <div class="viewer-wrap"><div id="v2" class="viewer"></div></div>
-      <div class="foot">Cartoon protein + ligand sticks</div>
+      <div class="foot">Cartoon protein + ligand sticks; highlights residue 790</div>
     </div>
     <div class="card">
       <h3>EGFR + Osimertinib (C797F)</h3>
       <div class="viewer-wrap"><div id="v3" class="viewer"></div></div>
-      <div class="foot">Cartoon protein + ligand sticks</div>
+      <div class="foot">Cartoon protein + ligand sticks; highlights residue 797</div>
     </div>
     <div class="card">
       <h3>EGFR + Osimertinib (WT)</h3>
       <div class="viewer-wrap"><div id="v4" class="viewer"></div></div>
-      <div class="foot">Cartoon protein + ligand sticks</div>
+      <div class="foot">Cartoon protein + ligand sticks; highlights residue 797</div>
     </div>
   </div>
 
   <script>
-    // Same-origin base (your GitHub Pages site). No trailing slash needed if this file
-    // sits in the same folder as the PDB files.
-    const LOCAL_BASE = ''; // e.g. '' or 'structures/' if you put PDBs in /structures
+    // If the PDBs sit next to this HTML, keep ''. If they're in a subfolder, set e.g. 'structures/'.
+    const LOCAL_BASE = '';
 
     // Raw fallback (different origin) if a file isn’t on Pages yet
     const RAW_BASE = "https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/";
 
     const FILES = [
-      { div: 'v1', name: 'EGFR_erlotinib_T790W_trimmed.pdb' },
-      { div: 'v2', name: 'EGFR_erlotinib_trimmed.pdb' },
-      { div: 'v3', name: 'EGFR_osimertinib_C797F_trimmed.pdb' },
-      { div: 'v4', name: 'EGFR_osimertinib_trimmed.pdb' }
+      { div: 'v1', name: 'EGFR_erlotinib_T790W_trimmed.pdb', highlightResi: 790 },
+      { div: 'v2', name: 'EGFR_erlotinib_trimmed.pdb',        highlightResi: 790 },
+      { div: 'v3', name: 'EGFR_osimertinib_C797F_trimmed.pdb',highlightResi: 797 },
+      { div: 'v4', name: 'EGFR_osimertinib_trimmed.pdb',      highlightResi: 797 }
     ];
 
     function showError(divId, msg) {
@@ -112,9 +100,38 @@
       return await r.text();
     }
 
-    async function loadViewer(divId, pdbName) {
+    function highlightResidue(viewer, resi) {
+      // Find the residue (first match among non-het atoms)
+      const atoms = viewer.getModel().selectedAtoms({ hetflag: false, resi });
+      if (!atoms || atoms.length === 0) return;
+
+      const resn = atoms[0].resn || '';
+      const chain = atoms[0].chain || undefined;
+
+      // Show that residue as thick yellow sticks
+      viewer.setStyle({ hetflag: false, resi, chain }, { stick: { radius: 0.35, color: 'yellow' } });
+
+      // Add a label (e.g., "CYS 797")
+      const labelText = `${resn} ${resi}`;
+      // Place label near residue centroid
+      let cx = 0, cy = 0, cz = 0;
+      atoms.forEach(a => { cx += a.x; cy += a.y; cz += a.z; });
+      cx /= atoms.length; cy /= atoms.length; cz /= atoms.length;
+
+      viewer.addLabel(labelText, {
+        position: { x: cx, y: cy, z: cz },
+        backgroundColor: "rgba(0,0,0,0.65)",
+        backgroundOpacity: 0.65,
+        fontColor: "white",
+        fontSize: 14,
+        borderThickness: 0.0,
+        alignment: "center"
+      });
+    }
+
+    async function loadViewer(divId, pdbName, highlightResi) {
       const el = document.getElementById(divId);
-      const viewer = $3Dmol.createViewer(el, { backgroundAlpha: 1.0 });
+      const viewer = $3Dmol.createViewer(el, { backgroundColor: '#101214' }); // dark to pop colors
 
       // try same-origin first
       let pdbText = null;
@@ -132,17 +149,20 @@
       try {
         viewer.addModel(pdbText, 'pdb');
 
-        // cartoon for protein (fallback to tube if no SS in PDB)
+        // Cartoon for protein; fall back to tube if no secondary structure
         viewer.setStyle({ hetflag: false }, { cartoon: { color: 'spectrum' } });
         const protAtoms = viewer.getModel().selectedAtoms({ hetflag: false });
         if (!protAtoms || protAtoms.length === 0) {
           viewer.setStyle({ atom: 'CA' }, { tube: { radius: 0.35, color: 'spectrum' } });
         }
 
-        // sticks for ligand / hetero atoms
+        // Sticks for ligand / hetero atoms
         viewer.setStyle({ hetflag: true }, { stick: { radius: 0.22 } });
 
-        // nice view: prefer ligand if present
+        // Highlight requested residue (797 or 790)
+        if (highlightResi) highlightResidue(viewer, highlightResi);
+
+        // Nice view: prefer ligand centroid; else whole protein
         const lig = viewer.getModel().selectedAtoms({ hetflag: true });
         if (lig && lig.length) viewer.zoomTo({ hetflag: true }); else viewer.zoomTo();
 
@@ -157,7 +177,7 @@
     }
 
     // Load all four panels
-    FILES.forEach(x => loadViewer(x.div, x.name));
+    FILES.forEach(x => loadViewer(x.div, x.name, x.highlightResi));
   </script>
 </body>
 </html>
