@@ -1,81 +1,44 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <title>EGFR Structures Viewer</title>
-  <script src="https://unpkg.com/molstar/build/viewer/molstar.js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/molstar/build/viewer/molstar.css" />
+  <meta charset="utf-8" />
+  <title>EGFR Structures</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f7f7f7;
-    }
-    h2 {
-      text-align: center;
-      margin: 10px 0;
-    }
-    .viewer-grid {
+    body { margin: 0; font-family: Arial, sans-serif; background: #f7f7f7; }
+    h2 { text-align: center; padding: 10px; }
+    .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       padding: 10px;
     }
-    .viewer-box {
-      border: 2px solid #ccc;
-      background-color: white;
-      padding: 5px;
-      display: flex;
-      flex-direction: column;
+    .viewer-wrapper {
+      background: white;
+      border: 1px solid #ddd;
       height: 500px;
     }
-    .viewer {
-      flex: 1;
-      border: 1px solid #ddd;
-    }
-    .title {
-      text-align: center;
-      font-weight: bold;
-      padding: 5px;
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
     }
   </style>
 </head>
 <body>
   <h2>EGFR Structures</h2>
-  <div class="viewer-grid">
-    <div class="viewer-box">
-      <div class="title">EGFR Erlotinib T790W</div>
-      <div id="viewer1" class="viewer"></div>
+  <div class="grid">
+    <div class="viewer-wrapper">
+      <iframe src="viewer_erlotinib_T790W.html"></iframe>
     </div>
-    <div class="viewer-box">
-      <div class="title">EGFR Erlotinib</div>
-      <div id="viewer2" class="viewer"></div>
+    <div class="viewer-wrapper">
+      <iframe src="viewer_erlotinib.html"></iframe>
     </div>
-    <div class="viewer-box">
-      <div class="title">EGFR Osimertinib C797F</div>
-      <div id="viewer3" class="viewer"></div>
+    <div class="viewer-wrapper">
+      <iframe src="viewer_osimertinib_C797F.html"></iframe>
     </div>
-    <div class="viewer-box">
-      <div class="title">EGFR Osimertinib</div>
-      <div id="viewer4" class="viewer"></div>
+    <div class="viewer-wrapper">
+      <iframe src="viewer_osimertinib.html"></iframe>
     </div>
   </div>
-
-  <script>
-    function loadMolstar(viewerId, pdbUrl) {
-      const viewer = new molstar.Viewer(viewerId, {
-        layoutIsExpanded: false,
-        layoutShowControls: false,
-        layoutShowSequence: false,
-        layoutShowLeftPanel: false
-      });
-      viewer.loadStructureFromUrl(pdbUrl, 'pdb');
-    }
-
-    loadMolstar('viewer1', 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/main/EGFR_erlotinib_T790W_trimmed.pdb');
-    loadMolstar('viewer2', 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/main/EGFR_erlotinib_trimmed.pdb');
-    loadMolstar('viewer3', 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/main/EGFR_osimertinib_C797F_trimmed.pdb');
-    loadMolstar('viewer4', 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/main/EGFR_osimertinib_trimmed.pdb');
-  </script>
 </body>
 </html>
