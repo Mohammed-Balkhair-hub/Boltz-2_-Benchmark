@@ -2,109 +2,50 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>EGFR Structures (Cartoon + Ligand)</title>
-  <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+  <title>EGFR Structures — Mol* iframes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root { --bg:#f6f7fb; --panel:#fff; --border:#e6e8ef; --accent:#f28c28; }
-    html, body { height:100%; margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background:var(--bg); }
-    header { background:var(--accent); color:#fff; padding:10px 16px; font-weight:700; }
-    .grid { display:grid; gap:16px; padding:16px; grid-template-columns: repeat(2, minmax(0,1fr)); }
-    .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 1px 2px rgba(0,0,0,0.04); }
-    .panel h3 { margin:0; padding:10px 12px; font-size:14px; border-bottom:1px solid var(--border); color:#222; }
-    .viewer { height:420px; width:100%; }
-    footer { text-align:center; color:#666; font-size:12px; padding:8px 0 16px; }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .viewer { height:360px; } }
+    :root { --accent:#f28c28; --bg:#f6f7fb; --card:#fff; --line:#e7e9ef; }
+    html,body{margin:0;height:100%;background:var(--bg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+    header{background:var(--accent);color:#fff;padding:10px 16px;font-weight:700}
+    .grid{display:grid;gap:16px;padding:16px;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    .card h3{margin:0;padding:10px 12px;border-bottom:1px solid var(--line);font-size:14px}
+    iframe{display:block;width:100%;height:430px;border:0}
+    @media (max-width:900px){.grid{grid-template-columns:1fr} iframe{height:360px}}
   </style>
 </head>
 <body>
-  <header>EGFR Structures — cartoon protein + stick ligand (drag to rotate, scroll to zoom)</header>
+  <header>EGFR Structures (interactive) — drag to rotate, scroll to zoom</header>
 
   <div class="grid">
-    <div class="panel"><h3>EGFR + Erlotinib (T790W)</h3><div id="v1" class="viewer"></div></div>
-    <div class="panel"><h3>EGFR + Erlotinib (WT)</h3><div id="v2" class="viewer"></div></div>
-    <div class="panel"><h3>EGFR + Osimertinib (C797F)</h3><div id="v3" class="viewer"></div></div>
-    <div class="panel"><h3>EGFR + Osimertinib (WT)</h3><div id="v4" class="viewer"></div></div>
+    <div class="card">
+      <h3>EGFR + Erlotinib (T790W)</h3>
+      <iframe
+        src="https://molstar.org/viewer/?hide-controls=1&noexpand=1&url=https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/EGFR_erlotinib_T790W_trimmed.pdb">
+      </iframe>
+    </div>
+
+    <div class="card">
+      <h3>EGFR + Erlotinib (WT)</h3>
+      <iframe
+        src="https://molstar.org/viewer/?hide-controls=1&noexpand=1&url=https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/EGFR_erlotinib_trimmed.pdb">
+      </iframe>
+    </div>
+
+    <div class="card">
+      <h3>EGFR + Osimertinib (C797F)</h3>
+      <iframe
+        src="https://molstar.org/viewer/?hide-controls=1&noexpand=1&url=https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/EGFR_osimertinib_C797F_trimmed.pdb">
+      </iframe>
+    </div>
+
+    <div class="card">
+      <h3>EGFR + Osimertinib (WT)</h3>
+      <iframe
+        src="https://molstar.org/viewer/?hide-controls=1&noexpand=1&url=https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/EGFR_osimertinib_trimmed.pdb">
+      </iframe>
+    </div>
   </div>
-
-  <footer>If a panel is blank, open the console (F12) — filename 404s will be printed.</footer>
-
-  <script>
-    // Edit these if your files live in a subfolder:
-    const local = {
-      v1: 'EGFR_erlotinib_T790W_trimmed.pdb',
-      v2: 'EGFR_erlotinib_trimmed.pdb',
-      v3: 'EGFR_osimertinib_C797F_trimmed.pdb',
-      v4: 'EGFR_osimertinib_trimmed.pdb'
-    };
-    // Optional raw URLs as fallback (adjust user/repo/branch if needed)
-    const rawBase = 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/';
-    const raw = {
-      v1: rawBase + 'EGFR_erlotinib_T790W_trimmed.pdb',
-      v2: rawBase + 'EGFR_erlotinib_trimmed.pdb',
-      v3: rawBase + 'EGFR_osimertinib_C797F_trimmed.pdb',
-      v4: rawBase + 'EGFR_osimertinib_trimmed.pdb'
-    };
-
-    const viewers = [];
-
-    function mountViewer(divId, pdbPathLocal, pdbPathRaw, delayMs=0) {
-      // Stagger loads so the GPU/network isn’t hit all at once
-      setTimeout(() => {
-        const viewer = $3Dmol.createViewer(divId, {backgroundColor: 'white', antialias: true});
-        viewers.push(viewer);
-
-        function styleAndRender() {
-          // Protein = cartoon (non-het)
-          viewer.setStyle({ hetflag: false }, { cartoon: { thickness: 0.4, color: 'spectrum' } });
-          // Ligand(s) = sticks
-          viewer.setStyle({ hetflag: true }, { stick: { radius: 0.22, colorscheme: 'Jmol' } });
-          const hasLig = viewer.getModel().selectedAtoms({ hetflag: true }).length > 0;
-          viewer.zoomTo(hasLig ? { hetflag: true } : {});
-          viewer.render();
-          viewer.resize(); // ensure visibility inside grid
-        }
-
-        function loadFrom(url, label) {
-          $3Dmol.download(url, viewer, { format: 'pdb' }, () => {
-            styleAndRender();
-          }, (err) => {
-            console.error(`[${divId}] ${label} load error:`, url, err);
-          });
-        }
-
-        // Try local first; if it 404s, retry with raw URL
-        fetch(pdbPathLocal, { method:'HEAD', cache:'no-store' })
-          .then(resp => {
-            if (resp.ok) {
-              loadFrom(pdbPathLocal, 'local');
-            } else {
-              console.warn(`[${divId}] local not found (${resp.status}) — trying raw URL`);
-              loadFrom(pdbPathRaw, 'raw');
-            }
-          })
-          .catch(() => {
-            console.warn(`[${divId}] local HEAD failed — trying raw URL`);
-            loadFrom(pdbPathRaw, 'raw');
-          });
-      }, delayMs);
-    }
-
-    // Mount all 4 (staggered by 200ms)
-    mountViewer('v1', local.v1, raw.v1, 0);
-    mountViewer('v2', local.v2, raw.v2, 200);
-    mountViewer('v3', local.v3, raw.v3, 400);
-    mountViewer('v4', local.v4, raw.v4, 600);
-
-    // Handle grid/layout changes
-    window.addEventListener('resize', () => {
-      for (const v of viewers) try { v.resize(); } catch(e){}
-    });
-
-    // If a viewer was created offscreen, force a resize when it appears
-    const ro = new ResizeObserver(() => {
-      for (const v of viewers) try { v.resize(); } catch(e){}
-    });
-    document.querySelectorAll('.viewer').forEach(el => ro.observe(el));
-  </script>
 </body>
 </html>
