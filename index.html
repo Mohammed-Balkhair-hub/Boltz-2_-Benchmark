@@ -1,315 +1,183 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EGFR — One-Model Morph: mutate residue → move protein + ligand</title>
-<script src="https://3dmol.org/build/3Dmol-min.js"></script>
-<style>
-  :root{--h:440px;--gap:14px}
-  *{box-sizing:border-box}
-  body{margin:0;background:#0b1020;color:#eaf2ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-  header{padding:16px;background:linear-gradient(90deg,#203773,#5aa3ff);font-weight:800}
-  header .sub{opacity:.9;font-weight:500;font-size:13.5px}
-  .wrap{max-width:1200px;margin:0 auto;padding:16px}
-  .grid{display:grid;gap:var(--gap);grid-template-columns:1fr}
-  @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
-  .card{background:linear-gradient(180deg,#121a33,#0f1530);border:1px solid rgba(138,162,255,.22);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
-  .head{padding:12px 14px;border-bottom:1px solid rgba(138,162,255,.22);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-  .title{font-weight:750}
-  .meta{opacity:.85;font-size:12.5px}
-  .viewerWrap{position:relative;height:var(--h);background:#0a0e1f}
-  .viewer{position:absolute;inset:0}
-  .label{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:12.5px}
-  .hud{padding:10px 12px;border-top:1px solid rgba(138,162,255,.22);display:grid;gap:10px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .btn{appearance:none;border:1px solid rgba(138,162,255,.35);background:rgba(90,163,255,.12);padding:8px 10px;border-radius:10px;color:#eaf2ff;font-weight:650;font-size:12.5px;cursor:pointer}
-  .btn:disabled{opacity:.5;cursor:not-allowed}
-  .range{flex:1;appearance:none;height:6px;border-radius:999px;background:rgba(138,162,255,.25);outline:none}
-  .range::-webkit-slider-thumb{appearance:none;width:18px;height:18px;border-radius:50%;background:#5aa3ff;border:2px solid #fff;cursor:pointer}
-  .small{font-size:12.5px;opacity:.85}
-  .warn{color:#f59e0b}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EGFR Structures (cartoon + ligand)</title>
+  <script src="https://3dmol.org/build/3Dmol-min.js"></script>
+  <style>
+    :root { --card-h: 420px; --gap: 14px; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; background: #f4f6f8; color:#222; }
+    header { background:#f18700; color:#fff; padding:10px 16px; font-weight:700; }
+    .grid {
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--gap);
+      padding: var(--gap);
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    .card {
+      background:#fff;
+      border-radius:12px;
+      box-shadow: 0 3px 14px rgba(0,0,0,.08);
+      border:1px solid #e6e9ee;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      min-height: calc(var(--card-h) + 44px);
+    }
+    .card h3 {
+      margin:0; padding:10px 12px; font-size:14px; font-weight:700; color:#111;
+      border-bottom:1px solid #eef1f5; background:#fafbfc;
+    }
+    .viewer-wrap { position:relative; height: var(--card-h); width: 100%; overflow:hidden; background:#fff; }
+    .viewer { position:absolute; inset:0; width:100%; height:100%; }
+    .foot { padding:8px 12px; font-size:12px; color:#6b7280; border-top:1px solid #eef1f5; }
+    .error {
+      position:absolute; inset:auto 12px 12px 12px;
+      background:#fff2f2; color:#b00020; border:1px solid #f3c2c2;
+      padding:8px 10px; border-radius:8px; font-size:12px; line-height:1.3;
+    }
+    @media (max-width: 900px){
+      .grid { grid-template-columns: 1fr; }
+      :root { --card-h: 380px; }
+    }
+  </style>
 </head>
 <body>
-<header>
-  <div>EGFR — One-Model Morph</div>
-  <div class="sub">Phase 1: mutate the highlighted residue (atoms appear/disappear correctly). Phase 2: move ALL matched coordinates (protein + ligand) from WT → Mutant. Only one model is shown.</div>
-</header>
+  <header>EGFR Structures (interactive) — drag to rotate, scroll to zoom</header>
 
-<div class="wrap">
   <div class="grid">
-
-    <!-- Pair 1 -->
-    <section class="card" id="pair1">
-      <div class="head">
-        <div>
-          <div class="title">Erlotinib — WT → T790W</div>
-          <div class="meta">Residue 790 highlighted; single-model morph</div>
-        </div>
-        <div class="small" id="p1Note"></div>
-      </div>
-      <div class="viewerWrap">
-        <div id="v1" class="viewer"></div>
-        <div class="label" id="l1">THR 790</div>
-      </div>
-      <div class="hud">
-        <div class="row">
-          <button class="btn" id="p1Play">▶ Play</button>
-          <button class="btn" id="p1Pause" disabled>⏸ Pause</button>
-          <button class="btn" id="p1Reset">↺ Reset</button>
-          <input class="range" id="p1Range" type="range" min="0" max="100" value="0" />
-          <span class="small" id="p1Pct">0%</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Pair 2 -->
-    <section class="card" id="pair2">
-      <div class="head">
-        <div>
-          <div class="title">Osimertinib — WT → C797F</div>
-          <div class="meta">Residue 797 highlighted; single-model morph</div>
-        </div>
-        <div class="small" id="p2Note"></div>
-      </div>
-      <div class="viewerWrap">
-        <div id="v2" class="viewer"></div>
-        <div class="label" id="l2">CYS 797</div>
-      </div>
-      <div class="hud">
-        <div class="row">
-          <button class="btn" id="p2Play">▶ Play</button>
-          <button class="btn" id="p2Pause" disabled>⏸ Pause</button>
-          <button class="btn" id="p2Reset">↺ Reset</button>
-          <input class="range" id="p2Range" type="range" min="0" max="100" value="0" />
-          <span class="small" id="p2Pct">0%</span>
-        </div>
-      </div>
-    </section>
-
+    <div class="card">
+      <h3>EGFR + Erlotinib (T790W)</h3>
+      <div class="viewer-wrap"><div id="v1" class="viewer"></div></div>
+      <div class="foot">Cartoon protein + ligand sticks; highlights residue 790</div>
+    </div>
+    <div class="card">
+      <h3>EGFR + Erlotinib (WT)</h3>
+      <div class="viewer-wrap"><div id="v2" class="viewer"></div></div>
+      <div class="foot">Cartoon protein + ligand sticks; highlights residue 790</div>
+    </div>
+    <div class="card">
+      <h3>EGFR + Osimertinib (C797F)</h3>
+      <div class="viewer-wrap"><div id="v3" class="viewer"></div></div>
+      <div class="foot">Cartoon protein + ligand sticks; highlights residue 797</div>
+    </div>
+    <div class="card">
+      <h3>EGFR + Osimertinib (WT)</h3>
+      <div class="viewer-wrap"><div id="v4" class="viewer"></div></div>
+      <div class="foot">Cartoon protein + ligand sticks; highlights residue 797</div>
+    </div>
   </div>
-  <p class="small" style="margin-top:10px;opacity:.8">If residue composition differs (e.g., THR→TRP), WT-only atoms fade out and mutant-only atoms fade in during Phase 1. Phase 2 moves all matched atoms by (chain|resi|atomName).</p>
-</div>
 
-<script>
-  // ---------- Files ----------
-  const LOCAL_BASE = '';
-  const RAW_BASE   = 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/';
+  <script>
+    // If the PDBs sit next to this HTML, keep ''. If they're in a subfolder, set e.g. 'structures/'.
+    const LOCAL_BASE = '';
 
-  const PAIRS = [
-    {
-      container:'v1', noteId:'p1Note', rangeId:'p1Range', pctId:'p1Pct',
-      playId:'p1Play', pauseId:'p1Pause', resetId:'p1Reset', labelId:'l1',
-      wtFile:'EGFR_erlotinib_trimmed.pdb',
-      mutFile:'EGFR_erlotinib_T790W_trimmed.pdb',
-      residue:{num:790, wtName:'THR', mutName:'TRP'}
-    },
-    {
-      container:'v2', noteId:'p2Note', rangeId:'p2Range', pctId:'p2Pct',
-      playId:'p2Play', pauseId:'p2Pause', resetId:'p2Reset', labelId:'l2',
-      wtFile:'EGFR_osimertinib_trimmed.pdb',
-      mutFile:'EGFR_osimertinib_C797F_trimmed.pdb',
-      residue:{num:797, wtName:'CYS', mutName:'PHE'}
-    }
-  ];
+    // Raw fallback (different origin) if a file isn’t on Pages yet
+    const RAW_BASE = "https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/";
 
-  const $ = id => document.getElementById(id);
-  async function fetchPDB(url){ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`); return r.text(); }
-  async function loadText(name){ try{ return await fetchPDB(LOCAL_BASE+name); } catch(e1){ return await fetchPDB(RAW_BASE+name); } }
+    const FILES = [
+      { div: 'v1', name: 'EGFR_erlotinib_T790W_trimmed.pdb', highlightResi: 790 },
+      { div: 'v2', name: 'EGFR_erlotinib_trimmed.pdb',        highlightResi: 790 },
+      { div: 'v3', name: 'EGFR_osimertinib_C797F_trimmed.pdb',highlightResi: 797 },
+      { div: 'v4', name: 'EGFR_osimertinib_trimmed.pdb',      highlightResi: 797 }
+    ];
 
-  // ---- Styling helpers ----
-  function styleProtein(model){ model.setStyle({hetflag:false},{cartoon:{color:'spectrum'}}); }
-  function styleLigand(model, opacity=1){ model.setStyle({hetflag:true},{stick:{radius:0.22, opacity}}); }
-  function clearLigand(model){ model.setStyle({hetflag:true},{}); }
-  function setResidueLabel(viewer, model, resi, name){
-    viewer.removeAllLabels();
-    const at = model.selectedAtoms({hetflag:false, resi});
-    let cx=0,cy=0,cz=0; for(const a of at){ cx+=a.x; cy+=a.y; cz+=a.z; }
-    const pos = at.length ? {x:cx/at.length, y:cy/at.length, z:cz/at.length} : {x:0,y:0,z:0};
-    viewer.addLabel(`${name} ${resi}`, {position:pos, backgroundColor:"rgba(0,0,0,0.65)", backgroundOpacity:0.65, fontColor:"white", fontSize:14, borderThickness:0, alignment:"center"});
-  }
-
-  // ---- Keying for atom matching ----
-  function keyOf(a){ return `${a.chain||''}|${a.resi}|${a.atom||a.atomname||''}`; }
-
-  function buildGlobalMap(modelWT, modelMut){
-    const wtAtoms  = modelWT.selectedAtoms({});
-    const mutAtoms = modelMut.selectedAtoms({});
-    for(const a of wtAtoms){ a._x0=a.x; a._y0=a.y; a._z0=a.z; } // save original WT coords
-    const mapMut = new Map(mutAtoms.map(a => [keyOf(a), a]));
-    const targets = new Map();
-    for(const a of wtAtoms){
-      const t = mapMut.get(keyOf(a));
-      if(t) targets.set(a, t);
-    }
-    return {targets};
-  }
-
-  function residueDiff(modelWT, modelMut, resi){
-    const wt = modelWT.selectedAtoms({hetflag:false, resi});
-    const mt = modelMut.selectedAtoms({hetflag:false, resi});
-    const mtMap = new Map(mt.map(a => [keyOf(a), a]));
-    const wtMap = new Map(wt.map(a => [keyOf(a), a]));
-    const common = wt.filter(a => mtMap.has(keyOf(a)));
-    const wtOnly = wt.filter(a => !mtMap.has(keyOf(a)));
-    const mutOnly = mt.filter(a => !wtMap.has(keyOf(a)));
-    return {common, wtOnly, mutOnly, mtMap};
-  }
-
-  function buildOverlayFromAtoms(viewer, atoms){
-    if(!atoms.length) return null;
-    const m = viewer.addModel('', 'pdb');
-    m.addAtoms(atoms.map(a => ({
-      elem:a.elem, atom:a.atom, x:a.x, y:a.y, z:a.z, resi:a.resi, chain:a.chain, hetflag:false, resn:a.resn
-    })));
-    m.setStyle({},{stick:{radius:0.35, opacity:0, color:'yellow'}});
-    return m;
-  }
-
-  // ---- Phase 1: mutate residue (common atoms move; overlays fade) ----
-  function applyResiduePhase(modelWT, resiData, alpha){
-    // move common residue atoms on the visible model
-    for(const wt of resiData.common){
-      const mut = resiData.mtMap.get(keyOf(wt));
-      wt.x = wt._x0 + alpha*(mut.x - wt._x0);
-      wt.y = wt._y0 + alpha*(mut.y - wt._y0);
-      wt.z = wt._z0 + alpha*(mut.z - wt._z0);
-    }
-    // refresh styles so sticks/cartoons rebuild with new coords
-    styleProtein(modelWT);
-    styleLigand(modelWT, 1);
-  }
-
-  // ---- Phase 2: move ALL matched atoms (protein + ligand) ----
-  function applyWholeStructure(modelWT, targets, alpha){
-    for(const [wt, mut] of targets){
-      wt.x = wt._x0 + alpha*(mut.x - wt._x0);
-      wt.y = wt._y0 + alpha*(mut.y - wt._y0);
-      wt.z = wt._z0 + alpha*(mut.z - wt._z0);
-    }
-    modelWT.setStyle({hetflag:false},{cartoon:{color:'spectrum'}});
-    modelWT.setStyle({hetflag:true},{stick:{radius:0.22}});
-  }
-
-  async function setupPair(cfg){
-    const el = $(cfg.container);
-    const viewer = $3Dmol.createViewer(el, {backgroundColor:'#0a0e1f'});
-
-    const [wtText, mutText] = await Promise.all([loadText(cfg.wtFile), loadText(cfg.mutFile)]);
-    const mWT  = viewer.addModel(wtText,  'pdb');       // VISIBLE model
-    const mRef = viewer.addModel(mutText, 'pdb');       // hidden reference (no styles)
-
-    styleProtein(mWT);
-    styleLigand(mWT, 1);
-
-    // camera → ligand if present
-    const ligWT = mWT.selectedAtoms({hetflag:true});
-    if(ligWT && ligWT.length) viewer.zoomTo({model:mWT, hetflag:true}); else viewer.zoomTo();
-    viewer.render();
-
-    // labels
-    setResidueLabel(viewer, mWT, cfg.residue.num, cfg.residue.wtName);
-    $(cfg.labelId).textContent = `${cfg.residue.wtName} ${cfg.residue.num}`;
-
-    // global atom map for Phase 2
-    const {targets} = buildGlobalMap(mWT, mRef);
-
-    // residue diff + overlays for Phase 1
-    const resData = residueDiff(mWT, mRef, cfg.residue.num);
-
-    const wtOnlyOverlay  = buildOverlayFromAtoms(viewer, resData.wtOnly); // starts opacity 0; we’ll set below
-    const mutOnlyOverlay = buildOverlayFromAtoms(viewer, resData.mutOnly);
-
-    // initialize overlays to correct start/end opacity
-    if(wtOnlyOverlay)  wtOnlyOverlay.setStyle({},{stick:{radius:0.35, opacity:1, color:'yellow'}});
-    if(mutOnlyOverlay) mutOnlyOverlay.setStyle({},{stick:{radius:0.35, opacity:0, color:'yellow'}});
-
-    const noteEl = $(cfg.noteId);
-    if((resData.wtOnly && resData.wtOnly.length) || (resData.mutOnly && resData.mutOnly.length)){
-      noteEl.innerHTML = '<span class="warn">Residue composition differs — extra atoms fade in/out during mutation.</span>';
+    function showError(divId, msg) {
+      const wrap = document.getElementById(divId).parentElement;
+      const box = document.createElement('div');
+      box.className = 'error';
+      box.innerHTML = `⚠️ ${msg}`;
+      wrap.appendChild(box);
     }
 
-    // scrubber (0..33% = residue; 33..100% = whole structure)
-    const range=$(cfg.rangeId), pct=$(cfg.pctId);
-    let tHold = 0;
-    function setScrubVal(p){
-      tHold = Math.max(0, Math.min(1, Number(p)/100));
-      pct.textContent = `${Math.round(tHold*100)}%`;
+    async function fetchPDB(url) {
+      const r = await fetch(url, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`);
+      return await r.text();
+    }
 
-      if(tHold <= 1/3){
-        const a = tHold * 3; // 0..1
-        applyResiduePhase(mWT, resData, a);
-        if(wtOnlyOverlay)  wtOnlyOverlay.setStyle({},{stick:{radius:0.35, opacity:(1-a), color:'yellow'}});
-        if(mutOnlyOverlay) mutOnlyOverlay.setStyle({},{stick:{radius:0.35, opacity:a,    color:'yellow'}});
-        setResidueLabel(viewer, mWT, cfg.residue.num, a<0.999 ? cfg.residue.wtName : cfg.residue.mutName);
-        $(cfg.labelId).textContent = `${a<0.999 ? cfg.residue.wtName : cfg.residue.mutName} ${cfg.residue.num}`;
-      } else {
-        if(wtOnlyOverlay)  wtOnlyOverlay.setStyle({},{stick:{radius:0.35, opacity:0, color:'yellow'}});
-        if(mutOnlyOverlay) mutOnlyOverlay.setStyle({},{stick:{radius:0.35, opacity:1, color:'yellow'}});
-        applyResiduePhase(mWT, resData, 1);
+    function highlightResidue(viewer, resi) {
+      // Find the residue (first match among non-het atoms)
+      const atoms = viewer.getModel().selectedAtoms({ hetflag: false, resi });
+      if (!atoms || atoms.length === 0) return;
 
-        const a = (tHold - 1/3) * 1.5; // 0..1
-        applyWholeStructure(mWT, targets, Math.max(0, Math.min(1, a)));
-        setResidueLabel(viewer, mWT, cfg.residue.num, cfg.residue.mutName);
-        $(cfg.labelId).textContent = `${cfg.residue.mutName} ${cfg.residue.num}`;
+      const resn = atoms[0].resn || '';
+      const chain = atoms[0].chain || undefined;
+
+      // Show that residue as thick yellow sticks
+      viewer.setStyle({ hetflag: false, resi, chain }, { stick: { radius: 0.35, color: 'yellow' } });
+
+      // Add a label (e.g., "CYS 797")
+      const labelText = `${resn} ${resi}`;
+      // Place label near residue centroid
+      let cx = 0, cy = 0, cz = 0;
+      atoms.forEach(a => { cx += a.x; cy += a.y; cz += a.z; });
+      cx /= atoms.length; cy /= atoms.length; cz /= atoms.length;
+
+      viewer.addLabel(labelText, {
+        position: { x: cx, y: cy, z: cz },
+        backgroundColor: "rgba(0,0,0,0.65)",
+        backgroundOpacity: 0.65,
+        fontColor: "white",
+        fontSize: 14,
+        borderThickness: 0.0,
+        alignment: "center"
+      });
+    }
+
+    async function loadViewer(divId, pdbName, highlightResi) {
+      const el = document.getElementById(divId);
+      const viewer = $3Dmol.createViewer(el, { backgroundColor: '#101214' }); // dark to pop colors
+
+      // try same-origin first
+      let pdbText = null;
+      try { pdbText = await fetchPDB(`${LOCAL_BASE}${pdbName}`); }
+      catch (e1) {
+        console.warn('Local fetch failed:', e1.message);
+        try { pdbText = await fetchPDB(`${RAW_BASE}${pdbName}`); }
+        catch (e2) {
+          console.error('Raw fetch failed:', e2.message);
+          showError(divId, `Couldn’t load <b>${pdbName}</b><br><code>${e2.message}</code>`);
+          return;
+        }
       }
-      viewer.render();
-    }
-    range.oninput = e => setScrubVal(e.target.value);
-    setScrubVal(0);
 
-    // controls
-    const playBtn=$(cfg.playId), pauseBtn=$(cfg.pauseId), resetBtn=$(cfg.resetId);
-    let raf=null, tStart=null;
+      try {
+        viewer.addModel(pdbText, 'pdb');
 
-    function cancel(){ if(raf) cancelAnimationFrame(raf); raf=null; tStart=null; }
-    function playFromCurrent(){
-      playBtn.disabled=true; pauseBtn.disabled=false;
-      const start = tHold;
-      const dur = 3000 * (1 - start + 1e-6);
-      function step(ts){
-        if(!tStart) tStart=ts;
-        const t = Math.min(1, (ts - tStart)/dur + start);
-        range.value = Math.round(t*100);
-        setScrubVal(range.value);
-        if(t < 1) raf = requestAnimationFrame(step);
-        else { playBtn.disabled=false; pauseBtn.disabled=true; cancel(); }
-      }
-      raf = requestAnimationFrame(step);
-    }
+        // Cartoon for protein; fall back to tube if no secondary structure
+        viewer.setStyle({ hetflag: false }, { cartoon: { color: 'spectrum' } });
+        const protAtoms = viewer.getModel().selectedAtoms({ hetflag: false });
+        if (!protAtoms || protAtoms.length === 0) {
+          viewer.setStyle({ atom: 'CA' }, { tube: { radius: 0.35, color: 'spectrum' } });
+        }
 
-    playBtn.onclick = () => playFromCurrent();
-    pauseBtn.onclick = () => { cancel(); pauseBtn.disabled=true; playBtn.disabled=false; };
-    resetBtn.onclick = () => {
-      cancel();
-      // reset WT coordinates
-      for(const a of mWT.selectedAtoms({})) { a.x=a._x0; a.y=a._y0; a.z=a._z0; }
-      styleProtein(mWT); styleLigand(mWT,1);
-      if(wtOnlyOverlay)  wtOnlyOverlay.setStyle({},{stick:{radius:0.35, opacity:1, color:'yellow'}});
-      if(mutOnlyOverlay) mutOnlyOverlay.setStyle({},{stick:{radius:0.35, opacity:0, color:'yellow'}});
-      range.value = 0; setScrubVal(0);
-      if(ligWT && ligWT.length) viewer.zoomTo({model:mWT, hetflag:true}); else viewer.zoomTo();
-      viewer.render();
-    };
+        // Sticks for ligand / hetero atoms
+        viewer.setStyle({ hetflag: true }, { stick: { radius: 0.22 } });
 
-    if (viewer.spin) viewer.spin(false);
-  }
+        // Highlight requested residue (797 or 790)
+        if (highlightResi) highlightResidue(viewer, highlightResi);
 
-  (async()=>{
-    for(const p of PAIRS){
-      try{ await setupPair(p); }
-      catch(e){
-        const host = $(p.container).parentElement;
-        const err = document.createElement('div');
-        err.style.position='absolute'; err.style.inset='auto 12px 12px 12px';
-        err.style.background='#fff2f2'; err.style.color='#8b0000'; err.style.padding='8px 10px';
-        err.style.borderRadius='8px'; err.style.fontSize='12px'; err.style.border='1px solid #f3c2c2';
-        err.innerHTML = `⚠️ Error: <code>${e.message}</code>`;
-        host.appendChild(err);
+        // Nice view: prefer ligand centroid; else whole protein
+        const lig = viewer.getModel().selectedAtoms({ hetflag: true });
+        if (lig && lig.length) viewer.zoomTo({ hetflag: true }); else viewer.zoomTo();
+
+        viewer.render();
+        // keep canvas sized to its card
+        const onResize = () => viewer.resize();
+        window.addEventListener('resize', onResize, { passive: true });
+      } catch (e) {
+        console.error('Viewer error:', e);
+        showError(divId, `Rendering error for <b>${pdbName}</b><br><code>${e.message}</code>`);
       }
     }
-  })();
-</script>
+
+    // Load all four panels
+    FILES.forEach(x => loadViewer(x.div, x.name, x.highlightResi));
+  </script>
 </body>
 </html>
