@@ -3,35 +3,41 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EGFR WT → Mutant Transitions (Erlotinib & Osimertinib)</title>
+<title>EGFR — Mutation Impact on Drug Binding (WT → Mutant)</title>
 <script src="https://3dmol.org/build/3Dmol-min.js"></script>
 <style>
   :root{--h:440px;--gap:14px}
   *{box-sizing:border-box}
   body{margin:0;background:#0b1020;color:#eaf2ff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
-  header{padding:14px 16px;background:linear-gradient(90deg,#203773,#5aa3ff);font-weight:800}
-  header .sub{opacity:.8;font-weight:500;font-size:13px}
+  header{padding:16px;background:linear-gradient(90deg,#203773,#5aa3ff);font-weight:800}
+  header .sub{opacity:.9;font-weight:500;font-size:13.5px}
   .wrap{max-width:1200px;margin:0 auto;padding:16px}
   .grid{display:grid;gap:var(--gap);grid-template-columns:1fr}
   @media(min-width:980px){.grid{grid-template-columns:1fr 1fr}}
   .card{background:linear-gradient(180deg,#121a33,#0f1530);border:1px solid rgba(138,162,255,.22);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
   .head{padding:12px 14px;border-bottom:1px solid rgba(138,162,255,.22);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
   .title{font-weight:750}
-  .meta{opacity:.8;font-size:12.5px}
+  .meta{opacity:.85;font-size:12.5px}
   .viewerWrap{position:relative;height:var(--h);background:#0a0e1f}
   .viewer{position:absolute;inset:0}
-  .hud{position:absolute;left:10px;bottom:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .label{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:12.5px}
+  .hud{padding:10px 12px;border-top:1px solid rgba(138,162,255,.22);display:grid;gap:10px}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
   .btn{appearance:none;border:1px solid rgba(138,162,255,.35);background:rgba(90,163,255,.12);padding:8px 10px;border-radius:10px;color:#eaf2ff;font-weight:650;font-size:12.5px;cursor:pointer}
   .btn:disabled{opacity:.5;cursor:not-allowed}
-  .badge{border:1px solid rgba(138,162,255,.35);background:rgba(139,92,246,.18);padding:6px 10px;border-radius:999px;font-size:12px}
-  .label{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.55);padding:6px 10px;border-radius:8px;font-size:12.5px}
-  .note{padding:10px 14px;border-top:1px solid rgba(138,162,255,.22);font-size:12.5px;opacity:.85}
+  .range{flex:1;appearance:none;height:6px;border-radius:999px;background:rgba(138,162,255,.25);outline:none}
+  .range::-webkit-slider-thumb{appearance:none;width:18px;height:18px;border-radius:50%;background:#5aa3ff;border:2px solid #fff;cursor:pointer}
+  .badge{border:1px solid rgba(138,162,255,.35);background:rgba(139,92,246,.18);padding:6px 10px;border-radius:999px;font-size:12px;white-space:nowrap}
+  .metric{margin-left:auto;font-size:12.5px;opacity:.9}
+  .mutDelta.positive{color:#36d399}
+  .mutDelta.negative{color:#f59e0b}
+  .small{font-size:12.5px;opacity:.85}
 </style>
 </head>
 <body>
 <header>
-  <div>EGFR Transition Animations — WT → Mutant</div>
-  <div class="sub">Crossfade morphs of protein + ligand; mutation residue label flips at the end. You can also record to WebM.</div>
+  <div>EGFR — Mutation Impact on Drug Binding</div>
+  <div class="sub">Each panel crossfades from <b>WT</b> to <b>Mutant</b> (protein cartoon + ligand sticks). The mutation residue label flips at the end. Use the slider to scrub comparisons precisely.</div>
 </header>
 
 <div class="wrap">
@@ -42,20 +48,24 @@
       <div class="head">
         <div>
           <div class="title">Erlotinib — WT → T790W</div>
-          <div class="meta">Highlights residue 790; ligand sticks; protein cartoon</div>
+          <div class="meta">Residue 790 highlighted; compares WT vs T790W</div>
         </div>
-        <div class="badge" id="b1">Residue: <span class="reslbl">THR 790</span> → <span class="mutlbl">TRP 790</span></div>
+        <div class="badge">Residue: <span class="small">THR 790 → TRP 790</span></div>
       </div>
       <div class="viewerWrap">
         <div id="v1" class="viewer"></div>
         <div class="label" id="l1">THR 790</div>
-        <div class="hud">
-          <button class="btn" id="p1Play">▶ Play transition</button>
+      </div>
+      <div class="hud">
+        <div class="row">
+          <button class="btn" id="p1Play">▶ Play</button>
+          <button class="btn" id="p1Pause" disabled>⏸ Pause</button>
           <button class="btn" id="p1Reset">↺ Reset</button>
-          <button class="btn" id="p1Rec">⏺ Record (5s)</button>
+          <input class="range" id="p1Range" type="range" min="0" max="100" value="0" />
+          <span class="small" id="p1Pct">0%</span>
+          <span class="metric" id="p1Metric"></span>
         </div>
       </div>
-      <div class="note">Tip: Click and drag to rotate. The animation crossfades between WT and mutant models that are loaded and aligned in place.</div>
     </section>
 
     <!-- Pair 2: Osimertinib (WT vs C797F) -->
@@ -63,51 +73,69 @@
       <div class="head">
         <div>
           <div class="title">Osimertinib — WT → C797F</div>
-          <div class="meta">Highlights residue 797; ligand sticks; protein cartoon</div>
+          <div class="meta">Residue 797 highlighted; compares WT vs C797F</div>
         </div>
-        <div class="badge" id="b2">Residue: <span class="reslbl">CYS 797</span> → <span class="mutlbl">PHE 797</span></div>
+        <div class="badge">Residue: <span class="small">CYS 797 → PHE 797</span></div>
       </div>
       <div class="viewerWrap">
         <div id="v2" class="viewer"></div>
         <div class="label" id="l2">CYS 797</div>
-        <div class="hud">
-          <button class="btn" id="p2Play">▶ Play transition</button>
+      </div>
+      <div class="hud">
+        <div class="row">
+          <button class="btn" id="p2Play">▶ Play</button>
+          <button class="btn" id="p2Pause" disabled>⏸ Pause</button>
           <button class="btn" id="p2Reset">↺ Reset</button>
-          <button class="btn" id="p2Rec">⏺ Record (5s)</button>
+          <input class="range" id="p2Range" type="range" min="0" max="100" value="0" />
+          <span class="small" id="p2Pct">0%</span>
+          <span class="metric" id="p2Metric"></span>
         </div>
       </div>
-      <div class="note">Recording captures the canvas to a WebM file using your browser’s MediaRecorder API.</div>
     </section>
 
   </div>
+  <p class="small" style="margin-top:10px;opacity:.8">Note: This visualization uses opacity crossfading so it remains robust even if WT and mutant atoms differ. The camera is fixed (no spinning/zooming) for stable comparison.</p>
 </div>
 
 <script>
-  // ---- File locations ----
-  const LOCAL_BASE = ''; // if PDBs are in the same repo/folder as this HTML
+  // ---------- CONFIGURE YOUR FILES & METRICS ----------
+  const LOCAL_BASE = ''; // leave '' if PDBs live beside this HTML
   const RAW_BASE   = 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/';
 
-  // Define pairs: {container, wtFile, mutFile, wtResidue:{num,name}, mutResidue:{num,name}}
+  // Optional binding metrics to display (set your real values)
+  // Example: probability, score, or IC50-derived value you want to show
+  // Set to null to hide a side.
+  const METRICS = {
+    // label: what you’re showing; wt: WT value; mut: mutant value
+    pair1: { label: 'Binding score', wt: null, mut: null }, // e.g., {label:'P(bind)', wt:0.62, mut:0.41}
+    pair2: { label: 'Binding score', wt: null, mut: null }
+  };
+
   const PAIRS = [
     {
       container: 'v1',
+      rangeId: 'p1Range', pctId: 'p1Pct',
+      playId: 'p1Play', pauseId: 'p1Pause', resetId: 'p1Reset',
+      labelId: 'l1', metricId: 'p1Metric',
       wtFile: 'EGFR_erlotinib_trimmed.pdb',
       mutFile:'EGFR_erlotinib_T790W_trimmed.pdb',
       wtResidue: { num: 790, name: 'THR' },
       mutResidue:{ num: 790, name: 'TRP' },
-      labelId: 'l1',
-      playBtn: 'p1Play', resetBtn: 'p1Reset', recBtn: 'p1Rec'
+      metricCfg: METRICS.pair1
     },
     {
       container: 'v2',
+      rangeId: 'p2Range', pctId: 'p2Pct',
+      playId: 'p2Play', pauseId: 'p2Pause', resetId: 'p2Reset',
+      labelId: 'l2', metricId: 'p2Metric',
       wtFile: 'EGFR_osimertinib_trimmed.pdb',
       mutFile:'EGFR_osimertinib_C797F_trimmed.pdb',
       wtResidue: { num: 797, name: 'CYS' },
       mutResidue:{ num: 797, name: 'PHE' },
-      labelId: 'l2',
-      playBtn: 'p2Play', resetBtn: 'p2Reset', recBtn: 'p2Rec'
+      metricCfg: METRICS.pair2
     }
   ];
+  // ---------- END CONFIG ----------
 
   const $ = id => document.getElementById(id);
 
@@ -116,179 +144,173 @@
     if(!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`);
     return await r.text();
   }
-
   async function loadText(name){
     try { return await fetchPDB(LOCAL_BASE + name); }
     catch(e1){ try { return await fetchPDB(RAW_BASE + name); }
     catch(e2){ throw e2; } }
   }
 
-  function addProteinAndLigand(viewer, pdbText){
-    const m = viewer.addModel(pdbText, 'pdb');
-    // styles are set later per model with opacities
-    return m;
+  function addBothModels(viewer, wtText, mutText){
+    const mWT  = viewer.addModel(wtText,  'pdb');
+    const mMut = viewer.addModel(mutText, 'pdb');
+    return { mWT, mMut };
   }
 
-  function setStylesForModels(viewer, mWT, mMut, alphaWT, alphaMut){
-    // protein
-    mWT.setStyle({hetflag:false}, {cartoon:{color:'spectrum', opacity:alphaWT}});
-    mMut.setStyle({hetflag:false}, {cartoon:{color:'spectrum', opacity:alphaMut}});
-    // ligand
-    mWT.setStyle({hetflag:true},  {stick:{radius:0.22, opacity:alphaWT}});
-    mMut.setStyle({hetflag:true},  {stick:{radius:0.22, opacity:alphaMut}});
+  function styleAtAlpha(viewer, mWT, mMut, alpha){
+    // alpha: 0 = fully WT, 1 = fully Mutant
+    const aWT = 1 - alpha;
+    const aMut = alpha;
+    mWT.setStyle({hetflag:false}, {cartoon:{color:'spectrum', opacity:aWT}});
+    mMut.setStyle({hetflag:false}, {cartoon:{color:'spectrum', opacity:aMut}});
+    mWT.setStyle({hetflag:true},  {stick:{radius:0.22, opacity:aWT}});
+    mMut.setStyle({hetflag:true},  {stick:{radius:0.22, opacity:aMut}});
+    viewer.render();
   }
 
-  function highlightResidueLabel(viewer, resid, name){
-    // remove prior labels (simple approach)
+  function residueCentroid(model, resi){
+    const atoms = model.selectedAtoms({hetflag:false, resi});
+    if(!atoms || !atoms.length) return null;
+    let x=0,y=0,z=0; atoms.forEach(a=>{x+=a.x;y+=a.y;z+=a.z});
+    return {x:x/atoms.length, y:y/atoms.length, z:z/atoms.length};
+  }
+
+  function setResidueLabel(viewer, model, resi, name){
     viewer.removeAllLabels();
-    // find residue atoms (non-het)
-    const atoms = viewer.getModel(0)?.selectedAtoms({hetflag:false, resi:resid}) || [];
-    let pos = null;
-    if(atoms.length){
-      let cx=0,cy=0,cz=0; atoms.forEach(a=>{cx+=a.x;cy+=a.y;cz+=a.z}); pos={x:cx/atoms.length,y:cy/atoms.length,z:cz/atoms.length};
-    }
-    // fallback: use het centroid if no backbone found
-    if(!pos){
-      const la = viewer.getModel(0)?.selectedAtoms({hetflag:true}) || [];
-      if(la.length){
-        let cx=0,cy=0,cz=0; la.forEach(a=>{cx+=a.x;cy+=a.y;cz+=a.z}); pos={x:cx/la.length,y:cy/la.length,z:cz/la.length};
-      } else {
-        pos = {x:0,y:0,z:0};
-      }
-    }
-    viewer.addLabel(`${name} ${resid}`, {
-      position: pos,
-      backgroundColor:"rgba(0,0,0,0.65)",
-      backgroundOpacity:0.65,
-      fontColor:"white",
-      fontSize:14,
-      borderThickness:0.0,
-      alignment:"center"
+    const p = residueCentroid(model, resi);
+    const pos = p || {x:0,y:0,z:0};
+    viewer.addLabel(`${name} ${resi}`, {
+      position: pos, backgroundColor:"rgba(0,0,0,0.65)", backgroundOpacity:0.65,
+      fontColor:"white", fontSize:14, borderThickness:0, alignment:"center"
     });
   }
 
-  function animateCrossfade(viewer, mWT, mMut, opts){
-    const {ms=3000, onStart, onUpdate, onEnd} = opts || {};
-    let start = null, raf = null;
-    if(onStart) onStart();
-
-    function step(ts){
-      if(!start) start = ts;
-      const t = Math.min(1, (ts - start) / ms);
-      const ease = 0.5 - 0.5 * Math.cos(Math.PI * t); // cosine ease
-      const aWT = 1 - ease;
-      const aMut = ease;
-      setStylesForModels(viewer, mWT, mMut, aWT, aMut);
-      viewer.render();
-      if(onUpdate) onUpdate(t);
-      if(t < 1){ raf = requestAnimationFrame(step); }
-      else { if(onEnd) onEnd(); }
+  function updateMetric(el, cfg, alpha){
+    if(!cfg || (cfg.wt==null && cfg.mut==null)){ el.textContent=''; return; }
+    const wt = cfg.wt, mut = cfg.mut;
+    if(wt==null || mut==null){
+      el.textContent = `${cfg.label}: ${wt ?? mut}`;
+      return;
     }
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
+    // Interpolate just for display during scrub
+    const cur = wt + (mut - wt) * alpha;
+    const delta = (mut - wt);
+    const sign = delta > 0 ? '+' : '';
+    el.innerHTML = `${cfg.label}: WT ${wt} → Mut ${mut} <span class="mutDelta ${delta>=0?'positive':'negative'}">(Δ ${sign}${delta.toFixed(3)})</span> &nbsp;|&nbsp; Now: ${cur.toFixed(3)}`;
   }
 
-  function setLabelText(labelId, text){ $(labelId).textContent = text; }
+  function animate({duration=3000, onFrame, onEnd}){
+    let start=null, raf=null, paused=false, tHold=0; // t in [0,1]
+    function step(ts){
+      if(paused){ raf = requestAnimationFrame(step); return; }
+      if(!start) start = ts;
+      const t = Math.min(1, (ts - start)/duration);
+      tHold = t;
+      if(onFrame) onFrame(t);
+      if(t<1) raf = requestAnimationFrame(step); else if(onEnd) onEnd();
+    }
+    raf = requestAnimationFrame(step);
+    return {
+      pause(){ paused=true; },
+      resume(){ paused=false; },
+      cancel(){ if(raf) cancelAnimationFrame(raf); },
+      t(){ return tHold; }
+    };
+  }
 
-  async function setupPair(pair){
-    const el = $(pair.container);
+  async function setupPair(cfg){
+    const el = $(cfg.container);
     const viewer = $3Dmol.createViewer(el, {backgroundColor:'#0a0e1f'});
-    // Load WT first for label positioning
-    const wtText = await loadText(pair.wtFile);
-    const mutText= await loadText(pair.mutFile);
 
-    const mWT = addProteinAndLigand(viewer, wtText);
-    const mMut = addProteinAndLigand(viewer, mutText);
+    const [wtText, mutText] = await Promise.all([loadText(cfg.wtFile), loadText(cfg.mutFile)]);
+    const { mWT, mMut } = addBothModels(viewer, wtText, mutText);
 
-    // Start with WT visible, mutant hidden
-    setStylesForModels(viewer, mWT, mMut, 1, 0);
+    // Start as WT (alpha 0)
+    styleAtAlpha(viewer, mWT, mMut, 0);
 
-    // zoom around ligand if present; else whole
+    // Zoom: prefer WT ligand; else entire
     const lig = mWT.selectedAtoms({hetflag:true});
     if(lig && lig.length) viewer.zoomTo({model:mWT, hetflag:true}); else viewer.zoomTo();
     viewer.render();
 
-    // initial residue label (WT)
-    highlightResidueLabel(viewer, pair.wtResidue.num, pair.wtResidue.name);
-    setLabelText(pair.labelId, `${pair.wtResidue.name} ${pair.wtResidue.num}`);
+    // Initial label = WT residue
+    setResidueLabel(viewer, mWT, cfg.wtResidue.num, cfg.wtResidue.name);
+    $(cfg.labelId).textContent = `${cfg.wtResidue.name} ${cfg.wtResidue.num}`;
 
     // Controls
-    const playBtn = $(pair.playBtn), resetBtn = $(pair.resetBtn), recBtn = $(pair.recBtn);
-    let cancelAnim = null;
+    const range = $(cfg.rangeId), pct = $(cfg.pctId);
+    const playBtn = $(cfg.playId), pauseBtn = $(cfg.pauseId), resetBtn = $(cfg.resetId);
+    const metricEl = $(cfg.metricId);
+
+    // Scrub handler (0..100)
+    function setAlphaFromRange(){
+      const a = Number(range.value)/100;
+      pct.textContent = `${range.value}%`;
+      styleAtAlpha(viewer, mWT, mMut, a);
+      // label swap near the end for clarity
+      if(a < 0.999){
+        setResidueLabel(viewer, mWT, cfg.wtResidue.num, cfg.wtResidue.name);
+        $(cfg.labelId).textContent = `${cfg.wtResidue.name} ${cfg.wtResidue.num}`;
+      } else {
+        setResidueLabel(viewer, mMut, cfg.mutResidue.num, cfg.mutResidue.name);
+        $(cfg.labelId).textContent = `${cfg.mutResidue.name} ${cfg.mutResidue.num}`;
+      }
+      updateMetric(metricEl, cfg.metricCfg, a);
+    }
+    range.oninput = setAlphaFromRange;
+    setAlphaFromRange();
+
+    let handle = null;
 
     playBtn.onclick = () => {
-      playBtn.disabled = true; resetBtn.disabled = true;
-      // gentle camera drift to make it feel alive
-      const spinOn = setInterval(()=>viewer.rotate(0.3), 16);
-
-      cancelAnim = animateCrossfade(viewer, mWT, mMut, {
-        ms: 3000,
-        onStart: () => {},
-        onUpdate: (t) => {
-          // Midway: gently zoom a touch toward ligand
-          if(t < 0.6 && lig && lig.length) viewer.zoom(1.002);
+      // disable play, enable pause
+      playBtn.disabled = true; pauseBtn.disabled = false;
+      const startA = Number(range.value)/100;
+      handle = animate({
+        duration: 3000 * (1 - startA + 1e-6), // continue from current point
+        onFrame: (t) => {
+          const a = startA + (1 - startA) * t;
+          range.value = Math.round(a*100);
+          setAlphaFromRange();
         },
         onEnd: () => {
-          clearInterval(spinOn);
-          // Update residue label to mutant at the end
-          highlightResidueLabel(viewer, pair.mutResidue.num, pair.mutResidue.name);
-          setLabelText(pair.labelId, `${pair.mutResidue.name} ${pair.mutResidue.num}`);
-          playBtn.disabled = false; resetBtn.disabled = false;
+          pauseBtn.disabled = true;
+          playBtn.disabled = false;
+          range.value = 100; setAlphaFromRange();
         }
       });
     };
 
+    pauseBtn.onclick = () => {
+      if(!handle) return;
+      // emulate pause by canceling and freezing at current value
+      handle.cancel();
+      handle = null;
+      pauseBtn.disabled = true;
+      playBtn.disabled = false;
+    };
+
     resetBtn.onclick = () => {
-      if(cancelAnim) cancelAnim();
-      setStylesForModels(viewer, mWT, mMut, 1, 0);
-      highlightResidueLabel(viewer, pair.wtResidue.num, pair.wtResidue.name);
-      setLabelText(pair.labelId, `${pair.wtResidue.name} ${pair.wtResidue.num}`);
-      viewer.zoomTo({model:mWT, hetflag:true}); viewer.render();
+      if(handle){ handle.cancel(); handle=null; }
+      range.value = 0; setAlphaFromRange();
+      pauseBtn.disabled = true; playBtn.disabled = false;
+      // keep camera fixed; re-zoom to ligand for consistency
+      if(lig && lig.length) viewer.zoomTo({model:mWT, hetflag:true}); else viewer.zoomTo();
+      viewer.render();
     };
 
-    // ---- Recording (5s) ----
-    recBtn.onclick = async () => {
-      recBtn.disabled = true;
-      try{
-        // Find the canvas inside this viewer
-        const canvas = el.querySelector('canvas');
-        const stream = canvas.captureStream(30); // 30 fps
-        const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-        const chunks = [];
-        recorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, {type:'video/webm'});
-          const a = document.createElement('a');
-          a.href = URL.createObjectURL(blob);
-          a.download = (pair.wtFile.replace('.pdb','') + '_to_' + pair.mutFile.replace('.pdb','') + '.webm').replace(/[^a-z0-9_\-\.]/gi,'_');
-          a.click();
-          URL.revokeObjectURL(a.href);
-          recBtn.disabled = false;
-        };
-        recorder.start();
-
-        // auto-play a transition while recording
-        playBtn.click();
-
-        // stop after 5s
-        setTimeout(()=>recorder.stop(), 5000);
-      } catch(e){
-        alert('Recording not supported in this browser: ' + e.message);
-        recBtn.disabled = false;
-      }
-    };
+    // Ensure absolutely no spin/zoom drift ever:
+    if (viewer.spin) viewer.spin(false);
   }
 
-  // Bootstrap both pairs
   (async ()=>{
     for(const p of PAIRS){
-      try { await setupPair(p); }
+      try{ await setupPair(p); }
       catch(e){
         const host = $(p.container).parentElement;
         const err = document.createElement('div');
         err.style.position='absolute'; err.style.inset='auto 12px 12px 12px';
-        err.style.background='#fff2f2'; err.style.color='#8b0000'; err.style.padding='8px 10px'; err.style.borderRadius='8px';
-        err.style.fontSize='12px'; err.style.border='1px solid #f3c2c2';
+        err.style.background='#fff2f2'; err.style.color='#8b0000'; err.style.padding='8px 10px';
+        err.style.borderRadius='8px'; err.style.fontSize='12px'; err.style.border='1px solid #f3c2c2';
         err.innerHTML = `⚠️ Couldn’t load one or both PDBs for this panel.<br><code>${e.message}</code>`;
         host.appendChild(err);
       }
