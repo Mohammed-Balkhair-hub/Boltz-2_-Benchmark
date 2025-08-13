@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EGFR — Mutation then Ligand Motion (WT → Mut)</title>
+<title>EGFR — One-Model Morph: Mutate residue → then move protein + ligand</title>
 <script src="https://3dmol.org/build/3Dmol-min.js"></script>
 <style>
   :root{--h:440px;--gap:14px}
@@ -33,19 +33,19 @@
 </head>
 <body>
 <header>
-  <div>EGFR — Mutation then Ligand Motion</div>
-  <div class="sub">Phase 1: residue mutation appears. Phase 2: ligand atoms move from WT → Mutant coordinates. Protein stays fixed (WT/cartoon).</div>
+  <div>EGFR — One-Model Morph</div>
+  <div class="sub">Phase 1: mutate the highlighted residue. Phase 2: move ALL coordinates (protein + ligand) from WT → Mutant. Only one model is shown; the mutant is used as a hidden reference.</div>
 </header>
 
 <div class="wrap">
   <div class="grid">
 
-    <!-- Pair 1: Erlotinib (WT vs T790W) -->
+    <!-- Pair 1 -->
     <section class="card" id="pair1">
       <div class="head">
         <div>
           <div class="title">Erlotinib — WT → T790W</div>
-          <div class="meta">Residue 790 then ligand motion</div>
+          <div class="meta">Residue 790 highlighted; single-model morph</div>
         </div>
         <div class="small" id="p1Note"></div>
       </div>
@@ -64,12 +64,12 @@
       </div>
     </section>
 
-    <!-- Pair 2: Osimertinib (WT vs C797F) -->
+    <!-- Pair 2 -->
     <section class="card" id="pair2">
       <div class="head">
         <div>
           <div class="title">Osimertinib — WT → C797F</div>
-          <div class="meta">Residue 797 then ligand motion</div>
+          <div class="meta">Residue 797 highlighted; single-model morph</div>
         </div>
         <div class="small" id="p2Note"></div>
       </div>
@@ -89,13 +89,11 @@
     </section>
 
   </div>
-  <p class="small" style="margin-top:10px;opacity:.8">
-    If ligand atom lists differ, we fall back to a ligand crossfade and show a warning.
-  </p>
+  <p class="small" style="margin-top:10px;opacity:.8">If some atoms exist only in one state (e.g., different side chain), they fade in/out during Phase 1. In Phase 2, all **matched atoms** move together; unmatched ones stay put.</p>
 </div>
 
 <script>
-  // ------------ FILES ------------
+  // ---------- Files ----------
   const LOCAL_BASE = '';
   const RAW_BASE   = 'https://raw.githubusercontent.com/Mohammed-Balkhair-hub/Boltz-2_-Benchmark/refs/heads/main/';
 
@@ -105,14 +103,14 @@
       playId:'p1Play', pauseId:'p1Pause', resetId:'p1Reset', labelId:'l1',
       wtFile:'EGFR_erlotinib_trimmed.pdb',
       mutFile:'EGFR_erlotinib_T790W_trimmed.pdb',
-      resi:790, wtName:'THR', mutName:'TRP'
+      residue:{num:790, wtName:'THR', mutName:'TRP'}
     },
     {
       container:'v2', noteId:'p2Note', rangeId:'p2Range', pctId:'p2Pct',
       playId:'p2Play', pauseId:'p2Pause', resetId:'p2Reset', labelId:'l2',
       wtFile:'EGFR_osimertinib_trimmed.pdb',
       mutFile:'EGFR_osimertinib_C797F_trimmed.pdb',
-      resi:797, wtName:'CYS', mutName:'PHE'
+      residue:{num:797, wtName:'CYS', mutName:'PHE'}
     }
   ];
 
@@ -120,166 +118,180 @@
   async function fetchPDB(url){ const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error(`${r.status} ${r.statusText} — ${url}`); return r.text(); }
   async function loadText(name){ try{ return await fetchPDB(LOCAL_BASE+name); } catch(e1){ return await fetchPDB(RAW_BASE+name); } }
 
-  function setProteinStyle(model){
-    model.setStyle({hetflag:false},{cartoon:{color:'spectrum'}});
-  }
-  function styleResidue(model, resi, opacity, color){
-    model.setStyle({hetflag:false, resi},{stick:{radius:0.35, opacity, color}});
-  }
-  function hideAllResidue(model, resi){
-    model.setStyle({hetflag:false, resi},{});
-  }
-  function showLigand(model, opacity=1){
-    model.setStyle({hetflag:true},{stick:{radius:0.22, opacity}});
-  }
-  function hideLigand(model){
-    model.setStyle({hetflag:true},{});
-  }
-  function centroid(model, resi){
-    const at = model.selectedAtoms({hetflag:false, resi});
-    if(!at.length) return null;
-    let x=0,y=0,z=0; at.forEach(a=>{x+=a.x;y+=a.y;z+=a.z});
-    return {x:x/at.length, y:y/at.length, z:z/at.length};
-  }
+  // ---- Styling helpers ----
+  function styleProtein(model){ model.setStyle({hetflag:false},{cartoon:{color:'spectrum'}}); }
+  function styleLigand(model, opacity=1){ model.setStyle({hetflag:true},{stick:{radius:0.22, opacity}}); }
+  function clearLigand(model){ model.setStyle({hetflag:true},{}); }
   function setResidueLabel(viewer, model, resi, name){
     viewer.removeAllLabels();
-    const c = centroid(model, resi) || {x:0,y:0,z:0};
-    viewer.addLabel(`${name} ${resi}`, {
-      position:c, backgroundColor:"rgba(0,0,0,0.65)", backgroundOpacity:0.65,
-      fontColor:"white", fontSize:14, borderThickness:0, alignment:"center"
-    });
+    const at = model.selectedAtoms({hetflag:false, resi});
+    let cx=0,cy=0,cz=0; for(const a of at){ cx+=a.x; cy+=a.y; cz+=a.z; }
+    const pos = at.length ? {x:cx/at.length, y:cy/at.length, z:cz/at.length} : {x:0,y:0,z:0};
+    viewer.addLabel(`${name} ${resi}`, {position:pos, backgroundColor:"rgba(0,0,0,0.65)", backgroundOpacity:0.65, fontColor:"white", fontSize:14, borderThickness:0, alignment:"center"});
   }
 
-  function buildLigandMorph(viewer, mWT, mMut){
-    const ligWT = mWT.selectedAtoms({hetflag:true});
-    const ligMut = mMut.selectedAtoms({hetflag:true});
+  // ---- Build atom maps keyed by (chain, resi, atomName) ----
+  function keyOf(a){ return `${a.chain||''}|${a.resi}|${a.atom||a.atomname||''}`; }
 
-    // Build a robust mapping by index; if counts mismatch => fallback
-    if(ligWT.length !== ligMut.length){
-      showLigand(mWT,1); showLigand(mMut,0);
-      return {
-        isFallback:true, a:0,
-        scrub(a){ this.a=a; showLigand(mWT, 1-a); showLigand(mMut, a); viewer.render(); },
-        reset(){ this.scrub(0); },
-        play(){ let t0=null, raf=null, start=this.a, dur=2000*(1-start+1e-6);
-          const step=ts=>{ if(!t0) t0=ts; const t=Math.min(1,(ts-t0)/dur); this.scrub(start+(1-start)*t); if(t<1) raf=requestAnimationFrame(step); };
-          raf=requestAnimationFrame(step); this._raf=raf; },
-        pause(){ if(this._raf) cancelAnimationFrame(this._raf); }
-      };
+  function buildMaps(modelWT, modelMut){
+    const wtAtoms  = modelWT.selectedAtoms({});
+    const mutAtoms = modelMut.selectedAtoms({});
+    // store WT original
+    for(const a of wtAtoms){ a._x0=a.x; a._y0=a.y; a._z0=a.z; }
+    const mapMut = new Map(mutAtoms.map(a => [keyOf(a), a]));
+    const targets = new Map();        // WT atom -> target mutant atom
+    for(const a of wtAtoms){
+      const t = mapMut.get(keyOf(a));
+      if(t) targets.set(a, t);
     }
+    return {wtAtoms, mutAtoms, targets};
+  }
 
-    // Coordinate tween
-    showLigand(mWT,1);
-    hideLigand(mMut);
+  // ---- Residue-diff helpers (for Phase 1) ----
+  function residueSets(modelWT, modelMut, resi){
+    const sel = {hetflag:false, resi};
+    const wt = modelWT.selectedAtoms(sel);
+    const mt = modelMut.selectedAtoms(sel);
+    const mtMap = new Map(mt.map(a => [keyOf(a), a]));
+    const wtMap = new Map(wt.map(a => [keyOf(a), a]));
+    const common = wt.filter(a => mtMap.has(keyOf(a)));
+    const wtOnly = wt.filter(a => !mtMap.has(keyOf(a)));
+    const mutOnly = mt.filter(a => !wtMap.has(keyOf(a)));
+    return {common, wtOnly, mutOnly};
+  }
 
-    const map = ligWT.map((a,i)=>({wt:a, mut:ligMut[i]}));
-    // Save original WT coords
-    map.forEach(({wt})=>{ wt._x0=wt.x; wt._y0=wt.y; wt._z0=wt.z; });
+  // ---- Apply per-frame updates ----
+  function applyResiduePhase(modelWT, modelMut, resiData, alpha){
+    // alpha: 0..1 — 0 WT residue, 1 Mutant residue
+    const {common, wtOnly, mutOnly} = resiData;
+    // Move common residue atoms (coords on WT model)
+    for(const wt of common){
+      const mut = resiData._mutMap.get(keyOf(wt)); // prepared once
+      wt.x = wt._x0 + alpha*(mut.x - wt._x0);
+      wt.y = wt._y0 + alpha*(mut.y - wt._y0);
+      wt.z = wt._z0 + alpha*(mut.z - wt._z0);
+    }
+    // Fade WT-only atoms out (by restyling subset)
+    modelWT.setStyle({},{}); // clear all styles first (we'll restyle fresh)
+    styleProtein(modelWT);
+    styleLigand(modelWT,1);
 
-    function apply(a){
-      for(const {wt,mut} of map){
-        wt.x = wt._x0 + a*(mut.x - wt._x0);
-        wt.y = wt._y0 + a*(mut.y - wt._y0);
-        wt.z = wt._z0 + a*(mut.z - wt._z0);
+    if(wtOnly.length){
+      // draw WT-only sticks with decreasing opacity
+      const selList = wtOnly.map(a => ({chain:a.chain, resi:a.resi, atom:a.atom}));
+      // 3Dmol can't pass array selection directly, so apply in chunks
+      for(const s of selList){
+        modelWT.addStyle(s, {stick:{radius:0.35, opacity:(1-alpha), color:'yellow'}});
       }
-      // Force 3Dmol to rebuild sticks this frame (critical for visible motion)
-      mWT.setStyle({hetflag:true},{stick:{radius:0.22}});
-      viewer.render();
     }
-
-    return {
-      isFallback:false, a:0,
-      scrub(a){ this.a=a; apply(a); },
-      reset(){ this.a=0; apply(0); },
-      play(){ let t0=null, raf=null, start=this.a, dur=2000*(1-start+1e-6);
-        const step=ts=>{ if(!t0) t0=ts; const t=Math.min(1,(ts-t0)/dur); const a=start+(1-start)*t; this.scrub(a); if(t<1) raf=requestAnimationFrame(step); };
-        raf=requestAnimationFrame(step); this._raf=raf; },
-      pause(){ if(this._raf) cancelAnimationFrame(this._raf); }
-    };
+    // Mut-only atoms are shown via overlay model (added separately), its opacity handled outside
+    // Rebuild to reflect coordinate edits
+    modelWT.setStyle({hetflag:true},{stick:{radius:0.22}}); // force ligand rebuild
   }
 
+  function applyWholeStructurePhase(modelWT, targets, alpha){
+    // Move ALL matched atoms in the visible WT model toward mutant coords
+    for(const [wt, mut] of targets){
+      wt.x = wt._x0 + alpha*(mut.x - wt._x0);
+      wt.y = wt._y0 + alpha*(mut.y - wt._y0);
+      wt.z = wt._z0 + alpha*(mut.z - wt._z0);
+    }
+    // Rebuild cartoon & ligand each frame to reflect new coords
+    modelWT.setStyle({hetflag:false},{cartoon:{color:'spectrum'}});
+    modelWT.setStyle({hetflag:true},{stick:{radius:0.22}});
+  }
+
+  // ---- Build a tiny overlay model that contains ONLY mutant-only residue atoms ----
+  function buildMutResidueOverlay(viewer, modelMut, resi, mutOnly){
+    if(!mutOnly.length) return null;
+    // Create a new empty model and push only those atoms into it
+    const overlay = viewer.addModel('', 'pdb');
+    const toAdd = mutOnly.map(a => ({elem:a.elem, atom:a.atom, x:a.x, y:a.y, z:a.z, resi:a.resi, chain:a.chain, hetflag:false, resn:a.resn}));
+    overlay.addAtoms(toAdd);
+    overlay.setStyle({hetflag:false},{stick:{radius:0.35, opacity:0, color:'yellow'}});
+    return overlay;
+  }
+
+  // ---- Main per-pair setup ----
   async function setupPair(cfg){
     const el = $(cfg.container);
     const viewer = $3Dmol.createViewer(el, {backgroundColor:'#0a0e1f'});
 
-    // Load structures
     const [wtText, mutText] = await Promise.all([loadText(cfg.wtFile), loadText(cfg.mutFile)]);
-    const mWT  = viewer.addModel(wtText,  'pdb');
-    const mMut = viewer.addModel(mutText, 'pdb');
+    const mWT  = viewer.addModel(wtText,  'pdb');     // the ONLY visible model
+    const mRef = viewer.addModel(mutText, 'pdb');     // hidden reference (no styles applied)
 
-    // Protein (WT) as context
-    setProteinStyle(mWT);
-    setProteinStyle(mMut); // but we won't show mutant except at residue
-    hideLigand(mMut);
-    showLigand(mWT,1);
+    styleProtein(mWT);
+    styleLigand(mWT, 1);
+    // No style on mRef => not visible
 
-    // Camera
+    // Camera: focus near ligand
     const ligWT = mWT.selectedAtoms({hetflag:true});
     if(ligWT && ligWT.length) viewer.zoomTo({model:mWT, hetflag:true}); else viewer.zoomTo();
     viewer.render();
 
-    // Initial residue label
-    setResidueLabel(viewer, mWT, cfg.resi, cfg.wtName);
-    $(cfg.labelId).textContent = `${cfg.wtName} ${cfg.resi}`;
+    // Labels
+    setResidueLabel(viewer, mWT, cfg.residue.num, cfg.residue.wtName);
+    $(cfg.labelId).textContent = `${cfg.residue.wtName} ${cfg.residue.num}`;
 
-    // Residue morph controller (opacity blend for just that residue)
-    let residueAlpha = 0;
-    function residueApply(a){
-      // WT residue fades out, Mut residue fades in
-      styleResidue(mWT, cfg.resi, 1-a, 'yellow');
-      styleResidue(mMut, cfg.resi, a,   'yellow');
-      viewer.render();
+    // Build global atom map
+    const {targets} = buildMaps(mWT, mRef);
+
+    // Build residue sets and overlay
+    const resData = residueSets(mWT, mRef, cfg.residue.num);
+    resData._mutMap = new Map(mRef.selectedAtoms({hetflag:false, resi:cfg.residue.num}).map(a => [keyOf(a), a]));
+    const overlay = buildMutResidueOverlay(viewer, mRef, cfg.residue.num, resData.mutOnly);
+    const noteEl = $(cfg.noteId);
+    if(resData.mutOnly.length || resData.wtOnly.length){
+      noteEl.innerHTML = '<span class="warn">Residue composition differs — extra atoms fade in/out during mutation.</span>';
     }
-    // start with WT residue emphasized
-    residueApply(0);
 
-    // Ligand morph (phase 2)
-    const morph = buildLigandMorph(viewer, mWT, mMut);
-    if(morph.isFallback) $(cfg.noteId).innerHTML = '<span class="warn">Ligand atoms differ — using crossfade for ligand.</span>';
-
-    // Scrubber (maps 0..100 to two phases: 0..33% = residue; 33..100% = ligand)
+    // Scrub 0..100 over two phases: 0..33% residue, 33..100% whole structure
     const range=$(cfg.rangeId), pct=$(cfg.pctId);
-    function setScrub(v){
-      const p = Math.max(0, Math.min(100, Number(v)));
-      pct.textContent = `${p}%`;
+    let tHold = 0; // 0..1
+    function setScrub(pctVal){
+      tHold = Math.max(0, Math.min(1, Number(pctVal)/100));
+      pct.textContent = `${Math.round(tHold*100)}%`;
 
-      const t = p/100;
-      if(t <= 1/3){
-        const a = t * 3;         // 0..1 over first 1/3
-        residueAlpha = a;
-        residueApply(a);
-        morph.scrub(0);
-        setResidueLabel(viewer, mWT, cfg.resi, a<0.999 ? cfg.wtName : cfg.mutName);
-        $(cfg.labelId).textContent = `${a<0.999 ? cfg.wtName : cfg.mutName} ${cfg.resi}`;
+      if(tHold <= 1/3){
+        const a = tHold * 3; // 0..1 for Phase 1
+        // overlay opacity for mutant-only atoms
+        if(overlay){
+          overlay.setStyle({},{stick:{radius:0.35, opacity:a, color:'yellow'}});
+        }
+        applyResiduePhase(mWT, mRef, resData, a);
+        setResidueLabel(viewer, mWT, cfg.residue.num, a<0.999 ? cfg.residue.wtName : cfg.residue.mutName);
+        $(cfg.labelId).textContent = `${a<0.999 ? cfg.residue.wtName : cfg.residue.mutName} ${cfg.residue.num}`;
       } else {
-        residueApply(1);         // residue fully mutated
-        const a = (t - 1/3) * 1.5; // map 1/3..1 to 0..1
-        morph.scrub(Math.max(0, Math.min(1, a)));
-        setResidueLabel(viewer, mWT, cfg.resi, cfg.mutName);
-        $(cfg.labelId).textContent = `${cfg.mutName} ${cfg.resi}`;
+        // ensure residue is fully mutated before Phase 2
+        if(overlay){ overlay.setStyle({},{stick:{radius:0.35, opacity:1, color:'yellow'}}); }
+        applyResiduePhase(mWT, mRef, resData, 1);
+
+        const a = (tHold - 1/3) * 1.5; // map 1/3..1 → 0..1
+        applyWholeStructurePhase(mWT, targets, Math.max(0, Math.min(1, a)));
+        setResidueLabel(viewer, mWT, cfg.residue.num, cfg.residue.mutName);
+        $(cfg.labelId).textContent = `${cfg.residue.mutName} ${cfg.residue.num}`;
       }
+      viewer.render();
     }
     range.oninput = e => setScrub(e.target.value);
     setScrub(0);
 
-    // Play/Pause/Reset
+    // Play / Pause / Reset (3s total)
     const playBtn=$(cfg.playId), pauseBtn=$(cfg.pauseId), resetBtn=$(cfg.resetId);
-    let raf=null, tHold=0; // t in [0..1]
+    let raf=null, tStart=null, t0=0;
 
-    function cancel(){ if(raf) cancelAnimationFrame(raf); raf=null; }
-
+    function cancel(){ if(raf) cancelAnimationFrame(raf); raf=null; tStart=null; }
     function playFromCurrent(){
-      playBtn.disabled = true; pauseBtn.disabled = false;
+      playBtn.disabled=true; pauseBtn.disabled=false;
       const start = tHold;
       const dur = 3000 * (1 - start + 1e-6);
-      let t0=null;
-
       function step(ts){
-        if(!t0) t0=ts;
-        tHold = Math.min(1, (ts - t0)/dur + start);
-        range.value = Math.round(tHold*100);
+        if(!tStart) tStart=ts;
+        const t = Math.min(1, (ts - tStart)/dur + start);
+        range.value = Math.round(t*100);
         setScrub(range.value);
-        if(tHold < 1) raf = requestAnimationFrame(step);
+        if(t < 1) raf = requestAnimationFrame(step);
         else { playBtn.disabled=false; pauseBtn.disabled=true; cancel(); }
       }
       raf = requestAnimationFrame(step);
@@ -289,15 +301,16 @@
     pauseBtn.onclick = () => { cancel(); pauseBtn.disabled=true; playBtn.disabled=false; };
     resetBtn.onclick = () => {
       cancel();
-      tHold = 0; range.value = 0; setScrub(0);
-      pauseBtn.disabled = true; playBtn.disabled = false;
-      // re-zoom consistently (no drift)
+      // reset coords to original WT
+      for(const a of mWT.selectedAtoms({})) { a.x=a._x0; a.y=a._y0; a.z=a._z0; }
+      styleProtein(mWT); styleLigand(mWT,1);
+      if(overlay){ overlay.setStyle({},{stick:{radius:0.35, opacity:0, color:'yellow'}}); }
+      range.value = 0; setScrub(0);
       if(ligWT && ligWT.length) viewer.zoomTo({model:mWT, hetflag:true}); else viewer.zoomTo();
       viewer.render();
     };
 
-    // Keep absolutely still
-    if (viewer.spin) viewer.spin(false);
+    if (viewer.spin) viewer.spin(false); // absolutely no camera drift
   }
 
   (async()=>{
