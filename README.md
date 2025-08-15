@@ -1,22 +1,28 @@
 # Boltz-2 Benchmark Repository
 
-A comprehensive pipeline for protein-ligand affinity prediction using the Boltz-2 model, specifically designed for EGFR and VEGFR2 proteins with various drug compounds and mutations.
-
-## Overview
-
-This repository contains a complete workflow for predicting protein-ligand binding affinities using the [Boltz-2](https://github.com/jwohlwend/boltz) deep learning model. The pipeline processes protein structures, generates multiple sequence alignments (MSAs), and predicts binding affinities for various drug compounds and protein mutations.
+A comprehensive data management and analysis pipeline for protein-ligand affinity prediction using the [Boltz-2](https://github.com/jwohlwend/boltz) deep learning model. This repository provides tools to process, organize, and analyze Boltz-2 prediction results for various protein-drug combinations and mutations.
 
 **Note**: This repository is a benchmark implementation using Boltz-2. For the official Boltz-2 model and latest updates, please refer to the [official Boltz repository](https://github.com/jwohlwend/boltz).
 
+## What This Pipeline Actually Does
+
+This is **NOT just a simple Boltz-2 runner**. It's a comprehensive data management system that:
+
+1. **Processes Boltz-2 JSON outputs** into structured CSV metadata
+2. **Calculates derived values** including IC50 conversions and statistical means
+3. **Organizes data** for multiple protein-drug combinations and mutations
+4. **Provides analysis tools** for comparing affinity predictions across different conditions
+5. **Maintains data integrity** with proper error handling and validation
+
 ## How the Pipeline Works
 
-The Boltz-2 pipeline follows this workflow:
+The pipeline follows this workflow:
 
 1. **Input Preparation**: YAML files define protein sequences and ligand SMILES strings
-2. **Boltz-2 Execution**: The model runs predictions using the `boltz predict` command
-3. **Results Processing**: JSON output files are parsed and converted to CSV metadata
-4. **Data Analysis**: Affinity values are calculated and IC50 conversions are performed
-5. **Visualization**: Results are plotted and analyzed
+2. **Boltz-2 Execution**: Run Boltz-2 predictions (external to this repository)
+3. **Data Processing**: Extract affinity values from JSON outputs and calculate derived metrics
+4. **Metadata Generation**: Create structured CSV files with all affinity data and calculations
+5. **Data Analysis**: Provide tools to analyze and visualize the processed results
 
 ## Repository Structure
 
@@ -32,13 +38,13 @@ Boltz-2_-Benchmark/
 │   │   ├── gefitinib/        # Contains mutation files for gefitinib
 │   │   └── osimertinib/      # Contains mutation files for osimertinib
 │   └── VEGFR2/               # VEGFR2 protein with various drugs
-├── affinity_metadata/         # CSV files with affinity data
+├── affinity_metadata/         # CSV files with processed affinity data
 ├── affinity_plots/            # Generated visualization plots
 ├── boltz_affinity_output/     # Boltz-2 model outputs and results
 ├── boltz_log/                 # Log files from Boltz-2 runs
 ├── boltz_mutation_logs/       # Mutation-specific log files
-├── add_affinity_values.py     # Script to add affinity values to metadata
-└── add_mutation_affinity_values.py # Script for mutation affinity values
+├── add_affinity_values.py     # Core data processing script for regular proteins
+└── add_mutation_affinity_values.py # Core data processing script for mutations
 ```
 
 ## Supported Proteins and Drugs
@@ -76,9 +82,48 @@ pip install pandas numpy matplotlib seaborn pathlib pyyaml
 
 ### 1. Running Boltz-2 Predictions
 
-The pipeline runs Boltz-2 predictions for protein-ligand combinations. You can run it directly using the `boltz` command or use the provided Python scripts to automate the process.
+First, run Boltz-2 predictions for your protein-drug combinations:
 
-### 2. Creating Input Files for New Proteins/Drugs
+```bash
+# Example: Run Boltz-2 for EGFR with afatinib
+boltz predict affinity_inputs/EGFR/afatinib \
+  --out_dir boltz_affinity_output/EGFR_afatinib \
+  --use_msa_server \
+  --sampling_steps_affinity 300 \
+  --diffusion_samples_affinity 10 \
+  --affinity_mw_correction \
+  --num_workers 16 \
+  --max_parallel_samples 10 \
+  --override
+```
+
+### 2. Processing Results into Metadata
+
+After Boltz-2 completes, use the Python scripts to process the JSON outputs into structured CSV metadata:
+
+```bash
+# Format: python script.py <protein> <drug>
+python add_affinity_values.py EGFR afatinib
+
+# Format: python script.py <protein> <drug> <mutation_range>
+python add_mutation_affinity_values.py EGFR erlotinib 790-810
+
+# Process all available combinations
+python add_affinity_values.py --all
+python add_mutation_affinity_values.py --all
+```
+
+### 3. What Gets Generated
+
+The scripts create comprehensive CSV metadata files with:
+
+- **Raw affinity values**: 3 prediction values and 3 probability values from Boltz-2
+- **Calculated means**: Statistical averages of predictions and probabilities
+- **IC50 conversions**: Derived IC50 values using the formula `(6 - y) * 1.364`
+- **IC50 means**: Statistical averages of IC50 predictions
+- **Protein information**: Sequences, truncations, SMILES strings, file paths
+
+### 4. Creating Input Files for New Proteins/Drugs
 
 #### For Regular Proteins (Non-mutations)
 
@@ -134,29 +179,6 @@ properties:
       binder: A
 ```
 
-### 3. Processing Results
-
-After running Boltz-2, use the Python scripts to extract affinity values:
-
-#### For Regular Proteins
-```bash
-python add_affinity_values.py YOUR_PROTEIN YOUR_DRUG
-```
-
-#### For Mutations
-```bash
-python add_mutation_affinity_values.py YOUR_PROTEIN YOUR_DRUG 790-810
-```
-
-#### Process All Available Combinations
-```bash
-# Process all regular protein-drug combinations
-python add_affinity_values.py --all
-
-# Process all mutation combinations
-python add_mutation_affinity_values.py --all
-```
-
 ## Code Examples
 
 ### Running Boltz-2 for Different Proteins/Drugs
@@ -205,10 +227,6 @@ combinations = [
 for protein, drug in combinations:
     run_boltz_for_combination(protein, drug)
 ```
-
-
-
-
 
 ### Analyzing Results
 
@@ -289,8 +307,8 @@ Each YAML file contains:
 
 ### Key Outputs
 - `boltz_affinity_output/{PROTEIN}_{DRUG}/`: Main results directory
-- `affinity_metadata/affinity_{PROTEIN}.csv`: Processed affinity data
-- `affinity_metadata/affinity_{PROTEIN}_mutation.csv`: Mutation affinity data
+- `affinity_metadata/affinity_{PROTEIN}.csv`: Processed affinity data with calculated values
+- `affinity_metadata/affinity_{PROTEIN}_mutation.csv`: Mutation affinity data with calculated values
 
 ## Adding New Proteins/Drugs
 
@@ -332,6 +350,12 @@ Check the following log files for detailed error information:
 - `boltz_log/boltz-{protein}-{drug}.log`
 - `boltz_mutation_logs/boltz-{protein}-{drug}-mut{range}.log`
 
+## Support
+
+For questions and support:
+- Review the [Boltz-2 documentation](https://github.com/jwohlwend/boltz)
+- Join the [Boltz Slack channel](https://github.com/jwohlwend/boltz#introduction) for community support
+
 ## Contributing
 
 1. Fork the repository
@@ -356,12 +380,6 @@ If you use this repository in your research, please cite:
   url={https://github.com/yourusername/Boltz-2_-Benchmark}
 }
 ```
-
-## Support
-
-For questions and support:
-- Review the [Boltz-2 documentation](https://github.com/jwohlwend/boltz)
-- Join the [Boltz Slack channel](https://github.com/jwohlwend/boltz#introduction) for community support
 
 ## Acknowledgments
 
