@@ -206,41 +206,35 @@ for protein, drug in combinations:
     run_boltz_for_combination(protein, drug)
 ```
 
-### Adding Affinity Values to Metadata
 
-```python
-from add_affinity_values import add_affinity_values_to_metadata
 
-# Add affinity values for a specific protein-drug combination
-success = add_affinity_values_to_metadata("EGFR", "afatinib")
-if success:
-    print("Successfully added affinity values")
-else:
-    print("Failed to add affinity values")
-```
 
-### Processing Mutation Results
-
-```python
-from add_mutation_affinity_values import add_mutation_affinity_values_to_metadata
-
-# Add affinity values for EGFR mutations with erlotinib
-success = add_mutation_affinity_values_to_metadata("EGFR", "erlotinib", "790-810")
-if success:
-    print("Successfully added mutation affinity values")
-else:
-    print("Failed to add mutation affinity values")
-```
 
 ### Analyzing Results
+
+The scripts can be called directly from the command line with arguments:
+
+```bash
+# Format: python script.py <protein> <drug>
+python add_affinity_values.py EGFR afatinib
+
+# Format: python script.py <protein> <drug> <mutation_range>
+python add_mutation_affinity_values.py EGFR erlotinib 790-810
+
+# Process all available combinations
+python add_affinity_values.py --all
+python add_mutation_affinity_values.py --all
+```
+
+For custom analysis, you can import the functions in your own scripts:
 
 ```python
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def analyze_affinity_results(protein_name, drug_name):
-    """Analyze affinity results for a protein-drug combination"""
+def create_affinity_heatmap(protein_name, drug_name):
+    """Create a heatmap visualization of affinity results"""
     
     # Load metadata
     metadata_file = f"affinity_metadata/affinity_{protein_name}.csv"
@@ -249,10 +243,8 @@ def analyze_affinity_results(protein_name, drug_name):
     # Filter for specific drug
     drug_data = df[df['drug_name'] == drug_name]
     
-    # Create heatmap of affinity values vs truncations
+    # Create heatmap
     plt.figure(figsize=(10, 8))
-    
-    # Pivot data for heatmap
     heatmap_data = drug_data.pivot_table(
         values='affinity_pred_mean', 
         index='truncation', 
@@ -261,17 +253,11 @@ def analyze_affinity_results(protein_name, drug_name):
     
     sns.heatmap(heatmap_data, annot=True, cmap='RdYlBu_r', fmt='.2f')
     plt.title(f'{protein_name} + {drug_name} Affinity Heatmap')
-    plt.xlabel('Drug')
-    plt.ylabel('Protein Truncation')
     plt.tight_layout()
     plt.savefig(f'affinity_plots/{protein_name}_{drug_name}_heatmap.png', dpi=300)
     plt.show()
     
     return drug_data
-
-# Example usage
-results = analyze_affinity_results("EGFR", "afatinib")
-print(f"Processed {len(results)} protein variants")
 ```
 
 ## Input File Format
@@ -374,8 +360,6 @@ If you use this repository in your research, please cite:
 ## Support
 
 For questions and support:
-- Open an issue on GitHub
-- Check the log files for error details
 - Review the [Boltz-2 documentation](https://github.com/jwohlwend/boltz)
 - Join the [Boltz Slack channel](https://github.com/jwohlwend/boltz#introduction) for community support
 
