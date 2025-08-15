@@ -13,6 +13,9 @@ boltz_log/
 # Affinity plots
 affinity_plots/
 
+# Specific plot scripts
+plot_affnity_heatmap.py
+
 # Python cache files
 __pycache__/
 *.py[cod]
